@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+pub mod hamt;
+
 #[cfg(test)]
 mod tests {
 	#[test]
