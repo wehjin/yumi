@@ -13,7 +13,7 @@ mod tests {
 
 	#[test]
 	fn empty_produces_no_value() {
-		let reader = Reader::new(byte_cursor(), 0).unwrap();
+		let reader = Reader::new(byte_cursor(), 0, 0).unwrap();
 		let keys = [1u32, 2, 3, 4];
 		keys.to_vec().into_iter().for_each(|key| {
 			let mut slot_indexer = ZeroThenKeySlotIndexer { key };
@@ -24,7 +24,7 @@ mod tests {
 
 	#[test]
 	fn empty_produces_empty_root() {
-		let reader = Reader::new(byte_cursor(), 0).unwrap();
+		let reader = Reader::new(byte_cursor(), 0, 0).unwrap();
 		let frame = reader.root_frame;
 		frame.slots.iter().for_each(|slot| {
 			assert_eq!(*slot, Slot::Empty)
@@ -34,7 +34,8 @@ mod tests {
 
 pub(crate) struct Reader {
 	source: Box<dyn Source>,
-	root_pos: u64,
+	root_pos: usize,
+	root_mask: u32,
 	pub root_frame: Frame,
 }
 
@@ -58,14 +59,14 @@ impl Reader {
 		}
 	}
 
-	pub fn new(source: impl Source, root_pos: u64) -> io::Result<Self> {
+	pub fn new(source: impl Source, root_pos: usize, root_mask: u32) -> io::Result<Self> {
 		let mut source: Box<dyn Source> = Box::new(source);
 		let root_frame = if root_pos == 0 {
-			Frame::empty()
+			Frame::clear()
 		} else {
-			Frame::read(&mut source, root_pos)?
+			Frame::read(&mut source, root_pos, root_mask)?
 		};
-		Ok(Reader { source, root_pos, root_frame })
+		Ok(Reader { source, root_pos, root_mask, root_frame })
 	}
 }
 

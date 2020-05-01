@@ -25,7 +25,7 @@ mod tests {
 	fn double_write_single_slot_changes_read() {
 		let mut scope = WriteScope {};
 		let keys = vec![1u32, 2];
-		let mut writer = Writer::new(byte_cursor(), 0);
+		let mut writer = Writer::new(byte_cursor(), 0, 0);
 		keys.iter().for_each(|it| {
 			let key = *it;
 			let value = key * 10;
@@ -44,7 +44,7 @@ mod tests {
 		let mut scope = WriteScope {};
 		let key = 0x00000001;
 
-		let mut writer = Writer::new(byte_cursor(), 0);
+		let mut writer = Writer::new(byte_cursor(), 0, 0);
 		writer.write(0x00000001, 17, &mut scope).unwrap();
 
 		let reader = writer.reader().unwrap();
@@ -53,41 +53,41 @@ mod tests {
 	}
 }
 
-pub(crate) trait WriteContext {
-	fn slot_indexer(&self, key: u32) -> Box<dyn SlotIndexer>;
-}
-
 pub(crate) struct Writer {
 	dest: Box<dyn Dest>,
-	root_pos: u64,
+	root_pos: usize,
+	root_mask: u32,
 }
 
 impl Writer {
 	pub fn reader(&self) -> io::Result<Reader> {
-		let (source, pos) = self.dest.as_source();
-		Reader::new(source, pos)
+		let (source, _) = self.dest.as_source();
+		Reader::new(source, self.root_pos, self.root_mask)
 	}
 
 	pub fn write(&mut self, key: u32, value: u32, ctx: &mut impl WriteContext) -> io::Result<()> {
 		if (value & 0x80000000) > 0 {
 			Err(io::Error::new(ErrorKind::InvalidData, "Value is large than 31 bits"))
 		} else {
-			let root = {
-				let reader = self.reader()?;
-				reader.root_frame
-			};
+			let root = self.reader()?.root_frame;
 			let mut slot_indexer = ctx.slot_indexer(key);
 			let slot_index = slot_indexer.slot_index(0);
-			let frame = root.update_value(slot_index, key, value);
-			let bytes_written = frame.write(&mut self.dest)?;
+
+			let frame = root.with_value(slot_index, key, value);
+			let (mask, bytes_written) = frame.write(&mut self.dest)?;
 			self.root_pos += bytes_written;
+			self.root_mask = mask;
 			Ok(())
 		}
 	}
 
-	pub fn new(dest: impl Dest, root_pos: u64) -> Self {
-		Writer { dest: Box::new(dest), root_pos }
+	pub fn new(dest: impl Dest, root_pos: usize, root_mask: u32) -> Self {
+		Writer { dest: Box::new(dest), root_pos, root_mask }
 	}
+}
+
+pub(crate) trait WriteContext {
+	fn slot_indexer(&self, key: u32) -> Box<dyn SlotIndexer>;
 }
 
 pub trait Dest: Write + 'static {

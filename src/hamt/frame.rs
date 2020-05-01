@@ -15,14 +15,15 @@ mod tests {
 
 	#[test]
 	fn write_then_read() {
-		let write_frame = Frame::empty().update_value(0, 1, 7);
+		let frame = Frame::clear().with_value(0, 1, 7);
 		let mut dest: Cursor<Vec<u8>> = Cursor::new(Vec::new());
-		let bytes_written = write_frame.write(&mut dest).unwrap();
-		assert_eq!(bytes_written, dest.position());
-
+		let (mask, bytes) = frame.write(&mut dest).unwrap();
+		assert_eq!(dest.position(), 8, "destination position");
+		assert_eq!(bytes, 8, "bytes written");
+		assert_eq!(mask, 1 << 31, "mask");
 		let (mut source, pos) = dest.as_source();
-		let read_frame = Frame::read(&mut source, pos).unwrap();
-		assert_eq!(read_frame, write_frame);
+		let read = Frame::read(&mut source, pos as usize, mask).unwrap();
+		assert_eq!(read, frame);
 	}
 }
 
@@ -32,27 +33,17 @@ pub(crate) struct Frame {
 }
 
 impl Frame {
-	pub fn empty() -> Frame {
-		let slots = [Slot::Empty; 32];
-		Frame { slots }
-	}
-
-	pub fn update_value(&self, index: u8, key: u32, value: u32) -> Frame {
+	pub fn with_value(&self, index: u8, key: u32, value: u32) -> Frame {
 		let mut slots = self.slots.to_owned();
 		slots[index as usize] = Slot::Value { key, value };
 		Frame { slots }
 	}
 
-	pub fn read(source: &mut impl Source, pos: u64) -> Result<Frame, Error> {
-		let mut frame = Frame::empty();
-		let mut mask = {
-			let mut mask_buf = [0u8; 4];
-			source.seek(SeekFrom::Start(pos - 4))?;
-			source.read_exact(&mut mask_buf)?;
-			u32_of_buf(&mask_buf)
-		};
+	pub fn read(source: &mut impl Source, pos: usize, mask: u32) -> io::Result<Frame> {
+		let mut frame = Frame::clear();
+		let mut next_seek = SeekFrom::Start((pos - 8) as u64);
+		let mut mask = mask;
 		let mut index: i8 = 31;
-		let mut next_seek = SeekFrom::Current(-12);
 		while index >= 0 {
 			let slot_present = mask & 1 == 1;
 			if slot_present {
@@ -66,19 +57,38 @@ impl Frame {
 		Ok(frame)
 	}
 
-	pub fn write(&self, dest: &mut impl Dest) -> Result<u64, Error> {
-		let fold_result = self.slots.iter().try_fold((0u32, 0u64), |(mask, count), next| {
-			next.write(dest)
-				.map(|written| {
-					let one_more = if written { 1u32 } else { 0u32 };
-					((mask << 1) | one_more, count + one_more as u64)
-				})
-		});
-		let (mask, slot_count) = fold_result?;
-		let mut buf = [0u8; 4];
-		util::big_end_first_4(mask, &mut buf);
-		let bytes_written = ((slot_count * 2) + 1) * 4;
-		dest.write(&buf).map(|_| bytes_written)
+	fn read_mask(source: &mut impl Source, pos: usize) -> io::Result<(u32, usize)> {
+		let mut mask_buf = [0u8; 4];
+		source.seek(SeekFrom::Start((pos - mask_buf.len()) as u64))?;
+		source.read_exact(&mut mask_buf)?;
+		Ok((u32_of_buf(&mask_buf), mask_buf.len()))
+	}
+
+	pub fn write(&self, dest: &mut impl Dest) -> Result<(u32, usize), Error> {
+		let (mask, slot_count) = self.write_slots(dest)?;
+		let total_bytes = (slot_count * 2) * 4;
+		Ok((mask, total_bytes))
+	}
+
+	fn write_mask(&self, mask: u32, dest: &mut impl Dest) -> io::Result<usize> {
+		let mut mask_buf = [0u8; 4];
+		util::big_end_first_4(mask, &mut mask_buf);
+		dest.write_all(&mask_buf)?;
+		Ok(4)
+	}
+
+	fn write_slots(&self, dest: &mut impl Dest) -> io::Result<(u32, usize)> {
+		self.slots.iter().try_fold((0u32, 0usize), |(mask, slot_count), slot| {
+			slot.write(dest).map(|written| {
+				let one_more = if written { 1u32 } else { 0u32 };
+				((mask << 1) | one_more, slot_count + one_more as usize)
+			})
+		})
+	}
+
+	pub fn clear() -> Frame {
+		let slots = [Slot::Empty; 32];
+		Frame { slots }
 	}
 }
 
