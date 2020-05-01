@@ -1,5 +1,4 @@
 use crate::hamt::util;
-use crate::hamt::util::big_end_first_4;
 
 #[cfg(test)]
 mod tests {

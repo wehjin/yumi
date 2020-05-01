@@ -1,9 +1,3 @@
-use std::borrow::Borrow;
-use std::cell::Cell;
-
-use crate::hamt::util;
-use crate::hamt::util::big_end_first_4;
-
 mod hash;
 
 #[cfg(test)]
@@ -18,14 +12,16 @@ mod tests {
 		let depths = [0, 1, 2, 3, 4, 5, 6, 7];
 		let indices = depths.iter().map(|it| keyhash.slot_index(*it)).collect::<Vec<_>>();
 		assert_eq!(indices, vec![10, 0, 0, 0, 0, 0, 10, 0]);
+		indices.iter().for_each(|it| { assert!(*it < 32); })
 	}
 
 	#[test]
-	fn keys_at_over_256_map_to_different_values_per_depth() {
+	fn keys_at_over_256_map_to_differing_values_per_depth() {
 		let mut keyhash = Keyhash::new(256);
 		let depths = [0, 1, 2, 3, 4, 5, 6, 7];
 		let indices = depths.iter().map(|it| keyhash.slot_index(*it)).collect::<HashSet<_>>();
-		assert_eq!(indices.len(), depths.len());
+		assert!(indices.len() > 5);
+		indices.iter().for_each(|it| { assert!(*it < 32); })
 	}
 }
 
@@ -44,7 +40,8 @@ impl Keyhash {
 		self.prepare_hashes(hashes_index);
 		let hash = &self.hashes[hashes_index];
 		let shift = (depth % LEVELS_PER_HASH) * BITS_PER_LEVEL;
-		((hash >> shift) & LEVEL_MASK) as u8
+		let slot_index = ((hash >> shift) & LEVEL_MASK) as u8;
+		slot_index
 	}
 
 	fn prepare_hashes(&mut self, hashes_index: usize) {
@@ -58,7 +55,7 @@ impl Keyhash {
 	}
 }
 
-static LEVEL_MASK: u32 = 0x1ffff;
+static LEVEL_MASK: u32 = 0x1f;
 static LEVELS_PER_HASH: usize = BITS_PER_HASH / BITS_PER_LEVEL;
 static BITS_PER_HASH: usize = BITS_PER_KEY;
 static BITS_PER_LEVEL: usize = 5;
