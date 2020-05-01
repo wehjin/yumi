@@ -2,6 +2,8 @@ use std::io::{Error, Read, SeekFrom, Write};
 use std::io;
 
 use crate::hamt::reader::Source;
+use crate::hamt::util;
+use crate::hamt::util::u32_of_buf;
 use crate::hamt::writer::Dest;
 
 #[cfg(test)]
@@ -74,7 +76,7 @@ impl Frame {
 		});
 		let (mask, slot_count) = fold_result?;
 		let mut buf = [0u8; 4];
-		big_end_first_4(mask, &mut buf);
+		util::big_end_first_4(mask, &mut buf);
 		let bytes_written = ((slot_count * 2) + 1) * 4;
 		dest.write(&buf).map(|_| bytes_written)
 	}
@@ -93,9 +95,9 @@ impl Slot {
 			Slot::Empty => Ok(false),
 			Slot::Value { key, value } => {
 				let mut buf = [0u8; 4];
-				big_end_first_4(*key, &mut buf);
+				util::big_end_first_4(*key, &mut buf);
 				dest.write(&buf)?;
-				big_end_first_4(*value, &mut buf);
+				util::big_end_first_4(*value, &mut buf);
 				dest.write(&buf).map(|_| true)
 			}
 			Slot::Ref { pos } => {
@@ -122,14 +124,6 @@ impl Slot {
 	}
 }
 
-
-fn big_end_first_4(n: u32, buf: &mut [u8; 4]) {
-	buf[0] = (n >> 24) as u8;
-	buf[1] = (n >> 16) as u8;
-	buf[2] = (n >> 8) as u8;
-	buf[3] = (n >> 0) as u8;
-}
-
 fn big_end_first_8(n: u64, buf: &mut [u8; 8]) {
 	buf[0] = (n >> 56) as u8;
 	buf[1] = (n >> 48) as u8;
@@ -139,16 +133,6 @@ fn big_end_first_8(n: u64, buf: &mut [u8; 8]) {
 	buf[5] = (n >> 16) as u8;
 	buf[6] = (n >> 8) as u8;
 	buf[7] = (n >> 0) as u8;
-}
-
-fn u32_of_buf(buf: &[u8; 4]) -> u32 {
-	let values = [
-		(buf[0] as u32) << 24,
-		(buf[1] as u32) << 16,
-		(buf[2] as u32) << 8,
-		(buf[3] as u32) << 0
-	];
-	values.iter().fold(0, |sum, next| sum | *next)
 }
 
 fn u32_pair_of_buf(buf: &[u8; 8]) -> (u32, u32) {
