@@ -2,15 +2,6 @@ use std::time::Duration;
 
 pub mod hamt;
 
-#[cfg(test)]
-mod tests {
-	#[test]
-	fn it_works() {
-		assert_eq!(2 + 2, 4);
-	}
-}
-
-
 pub trait Verse<'a> {
 	fn age() -> &'a Age;
 }

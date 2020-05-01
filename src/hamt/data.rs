@@ -1,8 +1,10 @@
-use std::env;
-use std::path::PathBuf;
+use std::io::Cursor;
 
-pub fn temp_path(name: &str) -> PathBuf {
-	let mut dir = env::temp_dir();
-	dir.push(name);
-	dir
+pub fn byte_cursor() -> Cursor<Vec<u8>> {
+	Cursor::new(Vec::new())
 }
+
+pub fn test_hash(subject: u32, index: usize, _prev: u8) -> u8 {
+	(subject >> (5 * index as u32)) as u8
+}
+
