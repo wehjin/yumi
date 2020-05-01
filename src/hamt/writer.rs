@@ -19,8 +19,28 @@ mod tests {
 		}
 	}
 
+	// TODO De-ignore and implement this after moving mask into Slot::Ref.
+	#[ignore]
 	#[test]
-	fn write_changes_read() {
+	fn double_write_single_slot_changes_read() {
+		let mut scope = WriteScope {};
+		let keys = vec![1u32, 2];
+		let mut writer = Writer::new(byte_cursor(), 0);
+		keys.iter().for_each(|it| {
+			let key = *it;
+			let value = key * 10;
+			writer.write(key, value, &mut scope).unwrap();
+		});
+		let reader = writer.reader().unwrap();
+		let reads = keys.iter().map(|it| {
+			let key = *it;
+			reader.read(&mut scope.slot_indexer(key))
+		}).collect::<Vec<_>>();
+		assert_eq!(reads, vec![Some(10), Some(20)]);
+	}
+
+	#[test]
+	fn single_write_changes_read() {
 		let mut scope = WriteScope {};
 		let key = 0x00000001;
 
