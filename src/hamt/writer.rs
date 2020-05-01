@@ -1,39 +1,55 @@
 use std::io;
 use std::io::{Cursor, ErrorKind, Write};
 use std::ops::Deref;
-use std::rc::Rc;
 
 use crate::hamt::reader::{Reader, Source};
+use crate::hamt::slot_indexer::SlotIndexer;
 
 #[cfg(test)]
 mod tests {
-	use crate::hamt::data::{byte_cursor, test_hash};
-	use crate::hamt::writer::Writer;
+	use crate::hamt::data::{byte_cursor, fixture::DepthSlotIndexer};
+	use crate::hamt::slot_indexer::SlotIndexer;
+	use crate::hamt::writer::{WriteContext, Writer};
+
+	struct WriteScope;
+
+	impl WriteContext for WriteScope {
+		fn slot_indexer(&self, key: u32) -> Box<dyn SlotIndexer> {
+			Box::new(DepthSlotIndexer { key })
+		}
+	}
 
 	#[test]
 	fn write_changes_read() {
-		let mut writer = Writer::new(byte_cursor(), 0, test_hash);
+		let mut writer = Writer::new(byte_cursor(), 0);
 		let key = 0x00000001;
-		writer.write(0x00000001, 17).unwrap();
+
+		let mut scope = WriteScope {};
+		writer.write(0x00000001, 17, &mut scope).unwrap();
+
 		let reader = writer.reader().unwrap();
-		let value = reader.read(key);
+		let mut slot_indexer = DepthSlotIndexer { key };
+		let value = reader.read(&mut slot_indexer);
 		assert_eq!(value, Some(17));
 	}
+}
+
+pub(crate) trait WriteContext {
+	fn slot_indexer(&self, key: u32) -> Box<dyn SlotIndexer>;
 }
 
 pub(crate) struct Writer {
 	dest: Box<dyn Dest>,
 	root_pos: u64,
-	hasher: Rc<dyn Fn(u32, usize, u8) -> u8>,
 }
 
 impl Writer {
 	pub fn reader(&self) -> io::Result<Reader> {
 		let (source, pos) = self.dest.as_source();
-		Reader::new(source, pos, self.hasher.to_owned())
+		Reader::new(source, pos)
 	}
 
-	pub fn write(&mut self, key: u32, value: u32) -> io::Result<()> {
+	pub fn write(&mut self, key: u32, value: u32, ctx: &mut impl WriteContext) -> io::Result<()> {
 		if (value & 0x80000000) > 0 {
 			Err(io::Error::new(ErrorKind::InvalidData, "Value is large than 31 bits"))
 		} else {
@@ -41,7 +57,8 @@ impl Writer {
 				let reader = self.reader()?;
 				reader.root_frame
 			};
-			let slot_index = (*self.hasher)(key, 0, 0);
+			let mut slot_indexer = ctx.slot_indexer(key);
+			let slot_index = slot_indexer.slot_index(0);
 			let frame = root.update_value(slot_index, key, value);
 			let bytes_written = frame.write(&mut self.dest)?;
 			self.root_pos += bytes_written;
@@ -49,12 +66,8 @@ impl Writer {
 		}
 	}
 
-	pub fn new(dest: impl Dest, root_pos: u64, hasher: impl Fn(u32, usize, u8) -> u8 + 'static) -> Self {
-		Writer {
-			dest: Box::new(dest),
-			root_pos,
-			hasher: Rc::new(hasher),
-		}
+	pub fn new(dest: impl Dest, root_pos: u64) -> Self {
+		Writer { dest: Box::new(dest), root_pos }
 	}
 }
 

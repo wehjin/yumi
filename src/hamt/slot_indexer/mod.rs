@@ -26,7 +26,9 @@ mod tests {
 }
 
 pub(crate) trait SlotIndexer {
+	fn key(&self) -> u32;
 	fn slot_index(&mut self, depth: usize) -> u8;
+	fn with_key(&self, key: u32) -> Box<dyn SlotIndexer>;
 }
 
 pub(crate) struct UniversalSlotPicker {
@@ -35,6 +37,7 @@ pub(crate) struct UniversalSlotPicker {
 }
 
 impl SlotIndexer for UniversalSlotPicker {
+	fn key(&self) -> u32 { self.key }
 	fn slot_index(&mut self, depth: usize) -> u8 {
 		let hashes_index = depth / LEVELS_PER_HASH;
 		self.prepare_hashes(hashes_index);
@@ -42,6 +45,10 @@ impl SlotIndexer for UniversalSlotPicker {
 		let shift = (depth % LEVELS_PER_HASH) * BITS_PER_LEVEL;
 		let slot_index = ((hash >> shift) & LEVEL_MASK) as u8;
 		slot_index
+	}
+
+	fn with_key(&self, key: u32) -> Box<dyn SlotIndexer> {
+		Box::new(UniversalSlotPicker { key, hashes: Vec::new() })
 	}
 }
 
