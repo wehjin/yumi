@@ -5,5 +5,5 @@ mod writer;
 #[cfg(test)]
 mod data;
 mod hasher;
-mod keyhash;
+mod slot_indexer;
 mod util;

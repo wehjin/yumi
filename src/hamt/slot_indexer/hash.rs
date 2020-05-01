@@ -2,7 +2,7 @@ use crate::hamt::util;
 
 #[cfg(test)]
 mod tests {
-	use crate::hamt::keyhash::hash::universal;
+	use crate::hamt::slot_indexer::hash::universal;
 
 	#[test]
 	fn keys_under_256_hash_to_themselves() {

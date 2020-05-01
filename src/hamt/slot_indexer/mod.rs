@@ -4,11 +4,11 @@ mod hash;
 mod tests {
 	use std::collections::HashSet;
 
-	use crate::hamt::keyhash::Keyhash;
+	use crate::hamt::slot_indexer::{SlotIndexer, UniversalSlotPicker};
 
 	#[test]
 	fn keys_under_256_cyclically_map_to_themselves() {
-		let mut keyhash = Keyhash::new(10);
+		let mut keyhash = UniversalSlotPicker::new(10);
 		let depths = [0, 1, 2, 3, 4, 5, 6, 7];
 		let indices = depths.iter().map(|it| keyhash.slot_index(*it)).collect::<Vec<_>>();
 		assert_eq!(indices, vec![10, 0, 0, 0, 0, 0, 10, 0]);
@@ -17,7 +17,7 @@ mod tests {
 
 	#[test]
 	fn keys_at_over_256_map_to_differing_values_per_depth() {
-		let mut keyhash = Keyhash::new(256);
+		let mut keyhash = UniversalSlotPicker::new(256);
 		let depths = [0, 1, 2, 3, 4, 5, 6, 7];
 		let indices = depths.iter().map(|it| keyhash.slot_index(*it)).collect::<HashSet<_>>();
 		assert!(indices.len() > 5);
@@ -25,23 +25,29 @@ mod tests {
 	}
 }
 
-pub(crate) struct Keyhash {
+pub(crate) trait SlotIndexer {
+	fn slot_index(&mut self, depth: usize) -> u8;
+}
+
+pub(crate) struct UniversalSlotPicker {
 	key: u32,
 	hashes: Vec<u32>,
 }
 
-impl Keyhash {
-	pub fn new(key: u32) -> Self {
-		Keyhash { key, hashes: Vec::new() }
-	}
-
-	pub fn slot_index(&mut self, depth: usize) -> u8 {
+impl SlotIndexer for UniversalSlotPicker {
+	fn slot_index(&mut self, depth: usize) -> u8 {
 		let hashes_index = depth / LEVELS_PER_HASH;
 		self.prepare_hashes(hashes_index);
 		let hash = &self.hashes[hashes_index];
 		let shift = (depth % LEVELS_PER_HASH) * BITS_PER_LEVEL;
 		let slot_index = ((hash >> shift) & LEVEL_MASK) as u8;
 		slot_index
+	}
+}
+
+impl UniversalSlotPicker {
+	pub fn new(key: u32) -> Self {
+		UniversalSlotPicker { key, hashes: Vec::new() }
 	}
 
 	fn prepare_hashes(&mut self, hashes_index: usize) {
