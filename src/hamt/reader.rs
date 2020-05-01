@@ -7,7 +7,7 @@ use crate::hamt::slot_indexer::SlotIndexer;
 #[cfg(test)]
 mod tests {
 	use crate::hamt::data::byte_cursor;
-	use crate::hamt::data::fixture::DepthSlotIndexer;
+	use crate::hamt::data::fixture::ZeroThenKeySlotIndexer;
 	use crate::hamt::frame::Slot;
 	use crate::hamt::reader::Reader;
 
@@ -16,7 +16,7 @@ mod tests {
 		let reader = Reader::new(byte_cursor(), 0).unwrap();
 		let keys = [1u32, 2, 3, 4];
 		keys.to_vec().into_iter().for_each(|key| {
-			let mut slot_indexer = DepthSlotIndexer { key };
+			let mut slot_indexer = ZeroThenKeySlotIndexer { key };
 			let value = reader.read(&mut slot_indexer);
 			assert_eq!(value, None)
 		});

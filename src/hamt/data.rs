@@ -7,25 +7,26 @@ pub fn byte_cursor() -> Cursor<Vec<u8>> {
 }
 
 #[cfg(test)]
-pub fn test_hash(subject: u32, index: usize, _prev: u8) -> u8 {
-	(subject >> (5 * index as u32)) as u8
-}
-
-#[cfg(test)]
 pub mod fixture {
 	#[cfg(test)]
 	use crate::hamt::slot_indexer::SlotIndexer;
 
-	pub struct DepthSlotIndexer { pub key: u32 }
+	pub struct ZeroThenKeySlotIndexer {
+		pub key: u32
+	}
 
-	impl SlotIndexer for DepthSlotIndexer {
+	impl SlotIndexer for ZeroThenKeySlotIndexer {
 		fn key(&self) -> u32 { self.key }
 		fn slot_index(&mut self, depth: usize) -> u8 {
-			(depth % 32) as u8
+			if depth == 0 {
+				0
+			} else {
+				(self.key as u8) % 32
+			}
 		}
 
 		fn with_key(&self, key: u32) -> Box<dyn SlotIndexer> {
-			Box::new(DepthSlotIndexer { key })
+			Box::new(ZeroThenKeySlotIndexer { key })
 		}
 	}
 }

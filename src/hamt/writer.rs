@@ -7,7 +7,7 @@ use crate::hamt::slot_indexer::SlotIndexer;
 
 #[cfg(test)]
 mod tests {
-	use crate::hamt::data::{byte_cursor, fixture::DepthSlotIndexer};
+	use crate::hamt::data::{byte_cursor, fixture::ZeroThenKeySlotIndexer};
 	use crate::hamt::slot_indexer::SlotIndexer;
 	use crate::hamt::writer::{WriteContext, Writer};
 
@@ -15,22 +15,21 @@ mod tests {
 
 	impl WriteContext for WriteScope {
 		fn slot_indexer(&self, key: u32) -> Box<dyn SlotIndexer> {
-			Box::new(DepthSlotIndexer { key })
+			Box::new(ZeroThenKeySlotIndexer { key })
 		}
 	}
 
 	#[test]
 	fn write_changes_read() {
-		let mut writer = Writer::new(byte_cursor(), 0);
+		let mut scope = WriteScope {};
 		let key = 0x00000001;
 
-		let mut scope = WriteScope {};
+		let mut writer = Writer::new(byte_cursor(), 0);
 		writer.write(0x00000001, 17, &mut scope).unwrap();
 
 		let reader = writer.reader().unwrap();
-		let mut slot_indexer = DepthSlotIndexer { key };
-		let value = reader.read(&mut slot_indexer);
-		assert_eq!(value, Some(17));
+		let read = reader.read(&mut scope.slot_indexer(key));
+		assert_eq!(read, Some(17));
 	}
 }
 

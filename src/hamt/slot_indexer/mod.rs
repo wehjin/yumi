@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 mod hash;
 
 #[cfg(test)]
@@ -29,6 +31,12 @@ pub(crate) trait SlotIndexer {
 	fn key(&self) -> u32;
 	fn slot_index(&mut self, depth: usize) -> u8;
 	fn with_key(&self, key: u32) -> Box<dyn SlotIndexer>;
+}
+
+impl SlotIndexer for Box<dyn SlotIndexer> {
+	fn key(&self) -> u32 { self.deref().key() }
+	fn slot_index(&mut self, depth: usize) -> u8 { self.deref_mut().slot_index(depth) }
+	fn with_key(&self, key: u32) -> Box<dyn SlotIndexer> { self.deref().with_key(key) }
 }
 
 pub(crate) struct UniversalSlotPicker {
