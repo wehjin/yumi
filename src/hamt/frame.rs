@@ -1,4 +1,4 @@
-use std::io::{Error, Read, SeekFrom, Write};
+use std::io::{Error, SeekFrom};
 use std::io;
 
 use crate::hamt::reader::Source;
@@ -17,11 +17,11 @@ mod tests {
 
 	#[test]
 	fn write_then_read() {
-		let frame = Frame::clear().with_value(0, 1, 7);
+		let frame = Frame::clear().with_value_slot(0, 1, 7);
 		let mut dest: Cursor<Vec<u8>> = Cursor::new(Vec::new());
-		let (mask, bytes) = frame.write(&mut dest).unwrap();
+		let (mask, pos) = frame.write(&mut dest).unwrap();
 		assert_eq!(dest.position(), 8, "destination position");
-		assert_eq!(bytes, 8, "bytes written");
+		assert_eq!(pos, 8, "pos");
 		assert_eq!(mask, 1 << 31, "mask");
 		let (mut source, pos) = dest.as_source();
 		let read = Frame::read(&mut source, pos as usize, mask).unwrap();
@@ -35,13 +35,13 @@ pub(crate) struct Frame {
 }
 
 impl Frame {
-	pub fn with_value(&self, index: u8, key: u32, value: u32) -> Frame {
+	pub fn with_value_slot(&self, index: u8, key: u32, value: u32) -> Frame {
 		let mut slots = self.slots.to_owned();
 		slots[index as usize] = Slot::Value { key, value };
 		Frame { slots }
 	}
 
-	pub fn with_pos(&self, index: u8, pos: u32, mask: u32) -> Frame {
+	pub fn with_ref_slot(&self, index: u8, pos: u32, mask: u32) -> Frame {
 		let mut slots = self.slots.to_owned();
 		slots[index as usize] = Slot::Ref { pos, mask };
 		Frame { slots }
@@ -91,8 +91,8 @@ impl Frame {
 	}
 
 	pub fn write(&self, dest: &mut impl Dest) -> Result<(u32, usize), Error> {
-		let (mask, bytes_written) = self.write_slots(dest)?;
-		Ok((mask, bytes_written))
+		let (mask, _) = self.write_slots(dest)?;
+		Ok((mask, dest.pos()))
 	}
 
 	fn write_mask(&self, mask: u32, dest: &mut impl Dest) -> io::Result<usize> {
@@ -118,31 +118,4 @@ impl Frame {
 		let slots = [Slot::Empty; 32];
 		Frame { slots }
 	}
-}
-
-
-fn big_end_first_8(n: u64, buf: &mut [u8; 8]) {
-	buf[0] = (n >> 56) as u8;
-	buf[1] = (n >> 48) as u8;
-	buf[2] = (n >> 40) as u8;
-	buf[3] = (n >> 32) as u8;
-	buf[4] = (n >> 24) as u8;
-	buf[5] = (n >> 16) as u8;
-	buf[6] = (n >> 8) as u8;
-	buf[7] = (n >> 0) as u8;
-}
-
-
-fn u64_of_buf(buf: &[u8; 8]) -> u64 {
-	let values = [
-		(buf[0] as u64) << 56,
-		(buf[1] as u64) << 48,
-		(buf[2] as u64) << 40,
-		(buf[3] as u64) << 32,
-		(buf[4] as u64) << 24,
-		(buf[5] as u64) << 16,
-		(buf[6] as u64) << 8,
-		(buf[7] as u64) << 0
-	];
-	values.iter().fold(0, |sum, next| sum | *next)
 }

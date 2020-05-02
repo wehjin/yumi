@@ -2,7 +2,6 @@ use std::io::{Cursor, Read, Seek};
 use std::io;
 
 use crate::hamt::frame::Frame;
-use crate::hamt::slot::Slot;
 use crate::hamt::slot_indexer::SlotIndexer;
 
 #[cfg(test)]
@@ -35,8 +34,8 @@ mod tests {
 
 pub(crate) struct Reader {
 	source: Box<dyn Source>,
-	root_pos: usize,
-	root_mask: u32,
+	pub root_pos: usize,
+	pub root_mask: u32,
 	pub root_frame: Frame,
 }
 
@@ -45,8 +44,25 @@ impl Reader {
 		if self.root_pos == 0 {
 			Ok(None)
 		} else {
-			self.root_frame.read_indexer(slot_indexer, 0, &mut self.source)
+			let frame = self.root_frame;
+			self.read_indexer(slot_indexer, 0, &frame)
 		}
+	}
+
+	pub fn read_indexer(&mut self, indexer: &mut impl SlotIndexer, depth: usize, frame: &Frame) -> io::Result<Option<u32>> {
+		frame.read_indexer(indexer, depth, &mut self.source)
+	}
+
+	pub fn read_frame(&mut self, pos: usize, mask: u32) -> io::Result<Frame> {
+		let frame = if pos == self.root_pos {
+			self.root_frame
+		} else if pos == 0 {
+			assert_eq!(mask, 0);
+			Frame::clear()
+		} else {
+			Frame::read(&mut self.source, pos, mask)?
+		};
+		Ok(frame)
 	}
 
 	pub fn new(source: impl Source, root_pos: usize, root_mask: u32) -> io::Result<Self> {
