@@ -14,3 +14,20 @@ pub(crate) fn u32_of_buf(buf: &[u8; 4]) -> u32 {
 	];
 	values.iter().fold(0, |sum, next| sum | *next)
 }
+
+pub(crate) fn u32x2_of_buf(buf: &[u8; 8]) -> (u32, u32) {
+	(
+		[
+			(buf[0] as u32) << 24,
+			(buf[1] as u32) << 16,
+			(buf[2] as u32) << 8,
+			(buf[3] as u32) << 0
+		].iter().fold(0, |sum, next| sum | *next),
+		[
+			(buf[4] as u32) << 24,
+			(buf[5] as u32) << 16,
+			(buf[6] as u32) << 8,
+			(buf[7] as u32) << 0
+		].iter().fold(0, |sum, next| sum | *next)
+	)
+}

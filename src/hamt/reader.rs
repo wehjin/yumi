@@ -1,23 +1,24 @@
 use std::io::{Cursor, Read, Seek};
 use std::io;
 
-use crate::hamt::frame::{Frame, Slot};
+use crate::hamt::frame::Frame;
+use crate::hamt::slot::Slot;
 use crate::hamt::slot_indexer::SlotIndexer;
 
 #[cfg(test)]
 mod tests {
 	use crate::hamt::data::byte_cursor;
 	use crate::hamt::data::fixture::ZeroThenKeySlotIndexer;
-	use crate::hamt::frame::Slot;
 	use crate::hamt::reader::Reader;
+	use crate::hamt::slot::Slot;
 
 	#[test]
 	fn empty_produces_no_value() {
-		let reader = Reader::new(byte_cursor(), 0, 0).unwrap();
+		let mut reader = Reader::new(byte_cursor(), 0, 0).unwrap();
 		let keys = [1u32, 2, 3, 4];
 		keys.to_vec().into_iter().for_each(|key| {
 			let mut slot_indexer = ZeroThenKeySlotIndexer { key };
-			let value = reader.read(&mut slot_indexer);
+			let value = reader.read(&mut slot_indexer).unwrap();
 			assert_eq!(value, None)
 		});
 	}
@@ -40,22 +41,11 @@ pub(crate) struct Reader {
 }
 
 impl Reader {
-	pub fn read(&self, slot_indexer: &mut impl SlotIndexer) -> Option<u32> {
+	pub fn read(&mut self, slot_indexer: &mut impl SlotIndexer) -> io::Result<Option<u32>> {
 		if self.root_pos == 0 {
-			None
+			Ok(None)
 		} else {
-			let key = slot_indexer.key();
-			let slot_index = slot_indexer.slot_index(0);
-			let frame = &self.root_frame;
-			match &frame.slots[slot_index as usize] {
-				Slot::Empty => None,
-				Slot::Value { key: slot_key, value } => {
-					if *slot_key == key {
-						Some(*value)
-					} else { None }
-				}
-				Slot::Ref { .. } => unimplemented!(),
-			}
+			self.root_frame.read_indexer(slot_indexer, 0, &mut self.source)
 		}
 	}
 

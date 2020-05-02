@@ -2,6 +2,8 @@ use std::io::{Error, Read, SeekFrom, Write};
 use std::io;
 
 use crate::hamt::reader::Source;
+use crate::hamt::slot::Slot;
+use crate::hamt::slot_indexer::SlotIndexer;
 use crate::hamt::util;
 use crate::hamt::util::u32_of_buf;
 use crate::hamt::writer::Dest;
@@ -39,6 +41,30 @@ impl Frame {
 		Frame { slots }
 	}
 
+	pub fn with_pos(&self, index: u8, pos: u32, mask: u32) -> Frame {
+		let mut slots = self.slots.to_owned();
+		slots[index as usize] = Slot::Ref { pos, mask };
+		Frame { slots }
+	}
+
+	pub fn read_indexer(&self, indexer: &mut impl SlotIndexer, depth: usize, source: &mut impl Source) -> io::Result<Option<u32>> {
+		let key = indexer.key();
+		let index = indexer.slot_index(depth);
+		let value = match self.slots[index as usize] {
+			Slot::Empty => None,
+			Slot::Value { key: slot_key, value } => if slot_key == key {
+				Some(value)
+			} else {
+				None
+			},
+			Slot::Ref { pos, mask } => {
+				let frame = Frame::read(source, pos as usize, mask)?;
+				frame.read_indexer(indexer, depth + 1, source)?
+			}
+		};
+		Ok(value)
+	}
+
 	pub fn read(source: &mut impl Source, pos: usize, mask: u32) -> io::Result<Frame> {
 		let mut frame = Frame::clear();
 		let mut next_seek = SeekFrom::Start((pos - 8) as u64);
@@ -65,9 +91,8 @@ impl Frame {
 	}
 
 	pub fn write(&self, dest: &mut impl Dest) -> Result<(u32, usize), Error> {
-		let (mask, slot_count) = self.write_slots(dest)?;
-		let total_bytes = (slot_count * 2) * 4;
-		Ok((mask, total_bytes))
+		let (mask, bytes_written) = self.write_slots(dest)?;
+		Ok((mask, bytes_written))
 	}
 
 	fn write_mask(&self, mask: u32, dest: &mut impl Dest) -> io::Result<usize> {
@@ -78,12 +103,15 @@ impl Frame {
 	}
 
 	fn write_slots(&self, dest: &mut impl Dest) -> io::Result<(u32, usize)> {
-		self.slots.iter().try_fold((0u32, 0usize), |(mask, slot_count), slot| {
-			slot.write(dest).map(|written| {
-				let one_more = if written { 1u32 } else { 0u32 };
-				((mask << 1) | one_more, slot_count + one_more as usize)
-			})
-		})
+		self.slots.iter().try_fold(
+			(0u32, 0usize),
+			|(mask, total_bytes), slot| {
+				slot.write(dest).map(|bytes| {
+					let mask_bit = if bytes == 0 { 0 } else { 1 };
+					((mask << 1) | mask_bit, total_bytes + bytes)
+				})
+			},
+		)
 	}
 
 	pub fn clear() -> Frame {
@@ -92,47 +120,6 @@ impl Frame {
 	}
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum Slot {
-	Empty,
-	Value { key: u32, value: u32 },
-	Ref { pos: u64 },
-}
-
-impl Slot {
-	pub fn write(&self, dest: &mut impl Write) -> io::Result<bool> {
-		match self {
-			Slot::Empty => Ok(false),
-			Slot::Value { key, value } => {
-				let mut buf = [0u8; 4];
-				util::big_end_first_4(*key, &mut buf);
-				dest.write(&buf)?;
-				util::big_end_first_4(*value, &mut buf);
-				dest.write(&buf).map(|_| true)
-			}
-			Slot::Ref { pos } => {
-				let mut buf = [0u8; 8];
-				big_end_first_8(*pos, &mut buf);
-				buf[0] |= 0x80;
-				dest.write(&buf).map(|_| true)
-			}
-		}
-	}
-
-	pub fn read(source: &mut impl Read) -> io::Result<Slot> {
-		let mut buf = [0u8; 8];
-		source.read_exact(&mut buf)?;
-		let slot = if (buf[0] & 0x80) == 0 {
-			let (key, value) = u32_pair_of_buf(&buf);
-			Slot::Value { key, value }
-		} else {
-			buf[0] &= 0x7f;
-			let pos = u64_of_buf(&buf);
-			Slot::Ref { pos }
-		};
-		Ok(slot)
-	}
-}
 
 fn big_end_first_8(n: u64, buf: &mut [u8; 8]) {
 	buf[0] = (n >> 56) as u8;
@@ -143,23 +130,6 @@ fn big_end_first_8(n: u64, buf: &mut [u8; 8]) {
 	buf[5] = (n >> 16) as u8;
 	buf[6] = (n >> 8) as u8;
 	buf[7] = (n >> 0) as u8;
-}
-
-fn u32_pair_of_buf(buf: &[u8; 8]) -> (u32, u32) {
-	(
-		[
-			(buf[0] as u32) << 24,
-			(buf[1] as u32) << 16,
-			(buf[2] as u32) << 8,
-			(buf[3] as u32) << 0
-		].iter().fold(0, |sum, next| sum | *next),
-		[
-			(buf[4] as u32) << 24,
-			(buf[5] as u32) << 16,
-			(buf[6] as u32) << 8,
-			(buf[7] as u32) << 0
-		].iter().fold(0, |sum, next| sum | *next)
-	)
 }
 
 

@@ -2,7 +2,9 @@ use std::io;
 use std::io::{Cursor, ErrorKind, Write};
 use std::ops::Deref;
 
+use crate::hamt::frame::Frame;
 use crate::hamt::reader::{Reader, Source};
+use crate::hamt::slot::Slot;
 use crate::hamt::slot_indexer::SlotIndexer;
 
 #[cfg(test)]
@@ -19,24 +21,18 @@ mod tests {
 		}
 	}
 
-	// TODO De-ignore and implement this after moving mask into Slot::Ref.
-	#[ignore]
 	#[test]
 	fn double_write_single_slot_changes_read() {
 		let mut scope = WriteScope {};
-		let keys = vec![1u32, 2];
-		let mut writer = Writer::new(byte_cursor(), 0, 0);
-		keys.iter().for_each(|it| {
-			let key = *it;
-			let value = key * 10;
-			writer.write(key, value, &mut scope).unwrap();
-		});
-		let reader = writer.reader().unwrap();
-		let reads = keys.iter().map(|it| {
-			let key = *it;
-			reader.read(&mut scope.slot_indexer(key))
-		}).collect::<Vec<_>>();
-		assert_eq!(reads, vec![Some(10), Some(20)]);
+		let cursor = byte_cursor();
+		let mut writer = Writer::new(cursor, 0, 0);
+		writer.write(1, 10, &mut scope).unwrap();
+		writer.write(2, 20, &mut scope).unwrap();
+
+		let mut reader = writer.reader().unwrap();
+		let value1 = reader.read(&mut scope.slot_indexer(1)).unwrap();
+		let value2 = reader.read(&mut scope.slot_indexer(2)).unwrap();
+		assert_eq!((value1, value2), (Some(10), Some(20)));
 	}
 
 	#[test]
@@ -47,8 +43,8 @@ mod tests {
 		let mut writer = Writer::new(byte_cursor(), 0, 0);
 		writer.write(0x00000001, 17, &mut scope).unwrap();
 
-		let reader = writer.reader().unwrap();
-		let read = reader.read(&mut scope.slot_indexer(key));
+		let mut reader = writer.reader().unwrap();
+		let read = reader.read(&mut scope.slot_indexer(key)).unwrap();
 		assert_eq!(read, Some(17));
 	}
 }
@@ -66,18 +62,46 @@ impl Writer {
 	}
 
 	pub fn write(&mut self, key: u32, value: u32, ctx: &mut impl WriteContext) -> io::Result<()> {
-		if (value & 0x80000000) > 0 {
-			Err(io::Error::new(ErrorKind::InvalidData, "Value is large than 31 bits"))
-		} else {
-			let root = self.reader()?.root_frame;
-			let mut slot_indexer = ctx.slot_indexer(key);
-			let slot_index = slot_indexer.slot_index(0);
+		self.require_empty_high_bit(key)?;
+		let frame = self.reader()?.root_frame;
+		let mut slot_indexer = ctx.slot_indexer(key);
+		let depth = 0;
+		let slot_index = slot_indexer.slot_index(depth);
+		let (mask, bytes_written) = match frame.slots[slot_index as usize] {
+			Slot::Empty => frame.with_value(slot_index, key, value).write(&mut self.dest)?,
+			Slot::Value { key: conflict_key, value: conflict_value } => {
+				if conflict_key == key {
+					frame.with_value(slot_index, key, value).write(&mut self.dest)?
+				} else {
+					let next_depth = depth + 1;
+					let mut conflict_indexer = ctx.slot_indexer(conflict_key);
+					let conflict_index = conflict_indexer.slot_index(next_depth);
+					let next_index = slot_indexer.slot_index(next_depth);
+					if conflict_index == next_index {
+						unimplemented!()
+					} else {
+						let resolution_frame = Frame::clear()
+							.with_value(conflict_index, conflict_key, conflict_value)
+							.with_value(next_index, key, value);
+						let (resolution_mask, resolution_bytes_written) = resolution_frame.write(&mut self.dest)?;
+						let resolution_pos = self.require_empty_high_bit((self.root_pos + resolution_bytes_written) as u32)?;
+						let (parent_mask, parent_bytes_written) = frame.with_pos(slot_index, resolution_pos, resolution_mask).write(&mut self.dest)?;
+						(parent_mask, parent_bytes_written + resolution_bytes_written)
+					}
+				}
+			}
+			Slot::Ref { .. } => unimplemented!()
+		};
+		self.root_pos += bytes_written;
+		self.root_mask = mask;
+		Ok(())
+	}
 
-			let frame = root.with_value(slot_index, key, value);
-			let (mask, bytes_written) = frame.write(&mut self.dest)?;
-			self.root_pos += bytes_written;
-			self.root_mask = mask;
-			Ok(())
+	fn require_empty_high_bit(&self, n: u32) -> io::Result<u32> {
+		if (n & 0x80000000) != 0 {
+			Err(io::Error::new(ErrorKind::InvalidData, "N exceeds 31 bits"))
+		} else {
+			Ok(n)
 		}
 	}
 
