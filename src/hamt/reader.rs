@@ -16,7 +16,7 @@ mod tests {
 		let mut reader = Reader::new(byte_cursor(), 0, 0).unwrap();
 		let keys = [1u32, 2, 3, 4];
 		keys.to_vec().into_iter().for_each(|key| {
-			let mut slot_indexer = ZeroThenKeySlotIndexer { key };
+			let mut slot_indexer = ZeroThenKeySlotIndexer { key, transition_depth: 1 };
 			let value = reader.read(&mut slot_indexer).unwrap();
 			assert_eq!(value, None)
 		});

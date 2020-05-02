@@ -12,13 +12,14 @@ pub mod fixture {
 	use crate::hamt::slot_indexer::SlotIndexer;
 
 	pub struct ZeroThenKeySlotIndexer {
-		pub key: u32
+		pub key: u32,
+		pub transition_depth: usize,
 	}
 
 	impl SlotIndexer for ZeroThenKeySlotIndexer {
 		fn key(&self) -> u32 { self.key }
 		fn slot_index(&mut self, depth: usize) -> u8 {
-			if depth == 0 {
+			if depth < self.transition_depth {
 				0
 			} else {
 				(self.key as u8) % 32
@@ -26,7 +27,7 @@ pub mod fixture {
 		}
 
 		fn with_key(&self, key: u32) -> Box<dyn SlotIndexer> {
-			Box::new(ZeroThenKeySlotIndexer { key })
+			Box::new(ZeroThenKeySlotIndexer { key, transition_depth: self.transition_depth })
 		}
 	}
 }

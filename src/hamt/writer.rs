@@ -1,4 +1,3 @@
-
 use std::io;
 use std::io::{Cursor, ErrorKind, Write};
 use std::ops::Deref;
@@ -14,17 +13,33 @@ mod tests {
 	use crate::hamt::slot_indexer::SlotIndexer;
 	use crate::hamt::writer::{WriteContext, Writer};
 
-	struct WriteScope;
+	struct WriteScope { transition_depth: usize }
 
 	impl WriteContext for WriteScope {
 		fn slot_indexer(&self, key: u32) -> Box<dyn SlotIndexer> {
-			Box::new(ZeroThenKeySlotIndexer { key })
+			Box::new(ZeroThenKeySlotIndexer { key, transition_depth: self.transition_depth })
 		}
 	}
 
 	#[test]
+	fn double_write_double_level_collision_changes_read() {
+		let mut scope = WriteScope { transition_depth: 2 };
+		let cursor = byte_cursor();
+		let mut writer = Writer::new(cursor, 0, 0);
+		// First places value in empty slot of root-frame.
+		writer.write(1, 10, &mut scope).unwrap();
+		// Second finds occupied slot. Create 2 sub-frames before finding collision-free hash.
+		writer.write(2, 20, &mut scope).unwrap();
+
+		let mut reader = writer.reader().unwrap();
+		let value1 = reader.read(&mut scope.slot_indexer(1)).unwrap();
+		let value2 = reader.read(&mut scope.slot_indexer(2)).unwrap();
+		assert_eq!((value1, value2), (Some(10), Some(20)));
+	}
+
+	#[test]
 	fn triple_write_single_slot_changes_read() {
-		let mut scope = WriteScope {};
+		let mut scope = WriteScope { transition_depth: 1 };
 		let cursor = byte_cursor();
 		let mut writer = Writer::new(cursor, 0, 0);
 		// First places value in empty slot of root-frame.
@@ -43,7 +58,7 @@ mod tests {
 
 	#[test]
 	fn single_write_changes_read() {
-		let mut scope = WriteScope {};
+		let mut scope = WriteScope { transition_depth: 1 };
 		let key = 0x00000001;
 
 		let mut writer = Writer::new(byte_cursor(), 0, 0);
