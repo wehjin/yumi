@@ -1,9 +1,9 @@
 use std::error::Error;
-use std::io::Cursor;
 use std::sync::mpsc::{sync_channel, SyncSender};
 use std::thread;
 
-use crate::{BeamContext, BeamScope, hamt, Ray, Song};
+use crate::{BeamContext, BeamScope, Ray, Speech};
+use crate::hamt::Hamt;
 
 #[derive(Debug, Clone)]
 pub struct Nova {
@@ -11,19 +11,23 @@ pub struct Nova {
 }
 
 impl Nova {
-	pub fn beam(&self, f: impl FnOnce(&mut dyn BeamContext) -> ()) -> Result<Ray, Box<dyn Error>> {
-		let mut scope = BeamScope { melodies: Vec::new() };
+	pub fn speak(&self, f: impl FnOnce(&mut dyn BeamContext) -> ()) -> Result<Ray, Box<dyn Error>> {
+		let mut scope = BeamScope { says: Vec::new() };
 		f(&mut scope);
 		let stanza = scope.stanza();
 		let (tx, rx) = sync_channel::<Ray>(1);
-		let action = NovaAction::Sing(stanza, tx);
+		let action = NovaAction::Speak(stanza, tx);
 		self.tx.send(action).unwrap();
 		let ray = rx.recv()?;
 		Ok(ray)
 	}
 
-	pub fn latest(&self) -> Ray {
-		Ray { origin: self.clone() }
+	pub fn latest(&self) -> Result<Ray, Box<dyn Error>> {
+		let (tx, rx) = sync_channel::<Ray>(1);
+		let action = NovaAction::Latest(tx);
+		self.tx.send(action).unwrap();
+		let ray = rx.recv()?;
+		Ok(ray)
 	}
 
 	pub fn connect() -> Nova {
@@ -31,12 +35,29 @@ impl Nova {
 		let nova = Nova { tx };
 		let thread_nova = nova.clone();
 		thread::spawn(move || {
-			let cursor: Cursor<Vec<u8>> = Cursor::new(Vec::new());
-			let mut writer = hamt::Writer::new(cursor, 0, 0);
+			let mut hamt = Hamt::new();
 			for action in rx {
 				match action {
-					NovaAction::Sing(_, tx) => {
-						let ray = Ray { origin: thread_nova.clone() };
+					NovaAction::Speak(speech, tx) => {
+						let extender = speech.says.iter().fold(
+							hamt.extender(),
+							|extender, say| {
+								let subject = say.subject();
+								extender.extend(subject, say)
+							},
+						);
+						hamt.commit(extender);
+						let ray = Ray {
+							origin: thread_nova.to_owned(),
+							viewer: hamt.viewer(),
+						};
+						tx.send(ray).unwrap();
+					}
+					NovaAction::Latest(tx) => {
+						let ray = Ray {
+							origin: thread_nova.to_owned(),
+							viewer: hamt.viewer(),
+						};
 						tx.send(ray).unwrap();
 					}
 				}
@@ -47,5 +68,6 @@ impl Nova {
 }
 
 enum NovaAction {
-	Sing(Song, SyncSender<Ray>)
+	Speak(Speech, SyncSender<Ray>),
+	Latest(SyncSender<Ray>),
 }

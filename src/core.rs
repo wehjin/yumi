@@ -1,6 +1,10 @@
+use std::hash::Hash;
+
+use crate::hamt::Key;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub(crate) struct Song {
-	pub melodies: Vec<Say>
+pub(crate) struct Speech {
+	pub says: Vec<Say>
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -9,22 +13,39 @@ pub enum Say {
 	Retract(Sayer, Subject, Ship, Said),
 }
 
+impl Say {
+	pub fn said(&self) -> Option<&Said> {
+		match self {
+			Say::Assert(_sayer, _subject, _ship, said) => Some(said),
+			Say::Retract(_sayer, _subject, _ship, _said) => None,
+		}
+	}
+	pub fn subject(&self) -> &Subject {
+		match self {
+			Say::Assert(_sayer, subject, _ship, _) => subject,
+			Say::Retract(_sayer, subject, _ship, _) => subject,
+		}
+	}
+}
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Said {
 	Number(u64)
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Ship {
 	Static(&'static str, &'static str)
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Subject {
-	Singer(Sayer),
+	Sayer(Sayer),
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+impl Key for Subject {}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Sayer {
 	Named(String)
 }

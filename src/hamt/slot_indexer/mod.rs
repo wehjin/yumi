@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-mod hash;
+use crate::hamt::hasher::universal;
 
 #[cfg(test)]
 mod tests {
@@ -69,7 +69,7 @@ impl UniversalSlotPicker {
 		if hashes_index >= self.hashes.len() {
 			let max_index = hashes_index + 1;
 			for index in self.hashes.len()..max_index {
-				let hash = hash::universal(self.key, (index + 1) as u32);
+				let hash = universal(self.key, (index + 1) as u32);
 				self.hashes.push(hash);
 			}
 		}
