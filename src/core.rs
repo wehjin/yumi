@@ -1,18 +1,16 @@
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct Song {
-	pub melodies: Vec<Melody>
+	pub melodies: Vec<Say>
 }
 
-pub enum Melody {
-	Up(Singer, Subject, Ship, Say),
-	Down(Singer, Subject, Ship, Say),
-}
-
-pub enum Spin {
-	Up,
-	Down,
-}
-
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Say {
+	Assert(Sayer, Subject, Ship, Said),
+	Retract(Sayer, Subject, Ship, Said),
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum Said {
 	Number(u64)
 }
 
@@ -23,14 +21,10 @@ pub enum Ship {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Subject {
-	Singer(Singer),
+	Singer(Sayer),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum Singer {
+pub enum Sayer {
 	Named(String)
-}
-
-pub enum PlaceId {
-	Url(String)
 }

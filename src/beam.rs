@@ -1,7 +1,7 @@
-use crate::{Melody, Song};
+use crate::{Say, Song};
 
 pub(crate) struct BeamScope {
-	pub(crate) melodies: Vec<Melody>
+	pub(crate) melodies: Vec<Say>
 }
 
 impl BeamScope {
@@ -11,11 +11,11 @@ impl BeamScope {
 }
 
 pub trait BeamContext {
-	fn add(&mut self, melody: Melody);
+	fn say(&mut self, melody: Say);
 }
 
 impl BeamContext for BeamScope {
-	fn add(&mut self, melody: Melody) {
+	fn say(&mut self, melody: Say) {
 		self.melodies.push(melody)
 	}
 }
