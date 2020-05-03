@@ -1,3 +1,5 @@
+pub use writer::*;
+
 mod frame;
 mod reader;
 mod writer;
