@@ -37,13 +37,13 @@ pub(crate) struct Frame {
 impl Frame {
 	pub fn with_value_slot(&self, index: u8, key: u32, value: u32) -> Frame {
 		let mut slots = self.slots.to_owned();
-		slots[index as usize] = Slot::Value { key, value };
+		slots[index as usize] = Slot::KeyValue(key, value);
 		Frame { slots }
 	}
 
 	pub fn with_ref_slot(&self, index: u8, pos: u32, mask: u32) -> Frame {
 		let mut slots = self.slots.to_owned();
-		slots[index as usize] = Slot::Ref { pos, mask };
+		slots[index as usize] = Slot::PosMask(pos, mask);
 		Frame { slots }
 	}
 
@@ -52,12 +52,12 @@ impl Frame {
 		let index = indexer.slot_index(depth);
 		let value = match self.slots[index as usize] {
 			Slot::Empty => None,
-			Slot::Value { key: slot_key, value } => if slot_key == key {
+			Slot::KeyValue(slot_key, value) => if slot_key == key {
 				Some(value)
 			} else {
 				None
 			},
-			Slot::Ref { pos, mask } => {
+			Slot::PosMask(pos, mask) => {
 				let frame = Frame::read(source, pos as usize, mask)?;
 				frame.read_indexer(indexer, depth + 1, source)?
 			}

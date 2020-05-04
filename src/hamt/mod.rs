@@ -14,7 +14,6 @@ mod slot_indexer;
 mod util;
 mod slot;
 
-
 pub struct Hamt<T> {
 	values: HashMap<u32, T>
 }

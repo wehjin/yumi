@@ -6,17 +6,17 @@ use crate::hamt::util;
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Slot {
 	Empty,
-	Value { key: u32, value: u32 },
-	Ref { pos: u32, mask: u32 },
+	KeyValue(u32, u32),
+	PosMask(u32, u32),
 }
 
 impl Slot {
 	pub fn read(source: &mut impl Read) -> io::Result<Slot> {
 		let (flag, a, b) = read_data(source)?;
 		let slot = if flag {
-			Slot::Value { key: a, value: b }
+			Slot::KeyValue(a, b)
 		} else {
-			Slot::Ref { pos: a, mask: b }
+			Slot::PosMask(a, b)
 		};
 		Ok(slot)
 	}
@@ -24,8 +24,8 @@ impl Slot {
 	pub fn write(&self, dest: &mut impl Write) -> io::Result<usize> {
 		match self {
 			Slot::Empty => Ok(0),
-			Slot::Value { key, value } => write_data(true, *key, *value, dest),
-			Slot::Ref { pos, mask } => write_data(false, *pos, *mask, dest),
+			Slot::KeyValue(key, value) => write_data(true, *key, *value, dest),
+			Slot::PosMask(pos, mask) => write_data(false, *pos, *mask, dest),
 		}
 	}
 }

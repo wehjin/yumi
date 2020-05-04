@@ -97,7 +97,7 @@ impl Writer {
 		let index = indexer.slot_index(depth);
 		let frame = reader.read_frame(pos, mask)?;
 		match frame.slots[index as usize] {
-			Slot::Value { key: conflict_key, value: conflict_value } => {
+			Slot::KeyValue(conflict_key, conflict_value) => {
 				if conflict_key == key {
 					frame.with_value_slot(index, key, value).write(&mut self.dest)
 				} else {
@@ -118,7 +118,7 @@ impl Writer {
 					}
 				}
 			}
-			Slot::Ref { pos: ref_pos, mask: ref_mask } => {
+			Slot::PosMask(ref_pos, ref_mask) => {
 				let (sub_mask, sub_pos) = self.write_indexer(indexer, depth + 1, ref_pos as usize, ref_mask, value, reader)?;
 				let sub_pos = self.require_empty_high_bit(sub_pos as u32)?;
 				let (parent_mask, parent_pos) = frame.with_ref_slot(index, sub_pos, sub_mask).write(&mut self.dest)?;
