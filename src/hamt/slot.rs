@@ -1,13 +1,15 @@
 use std::io::{Read, Write};
 use std::io;
 
+use crate::hamt::frame::Frame;
+use crate::hamt::root::Root;
 use crate::hamt::util;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Slot {
 	Empty,
 	KeyValue(u32, u32),
-	PosMask(u32, u32),
+	Root(Root),
 }
 
 impl Slot {
@@ -16,7 +18,7 @@ impl Slot {
 		let slot = if flag {
 			Slot::KeyValue(a, b)
 		} else {
-			Slot::PosMask(a, b)
+			Slot::Root(Root::PosMask(a, b))
 		};
 		Ok(slot)
 	}
@@ -25,7 +27,9 @@ impl Slot {
 		match self {
 			Slot::Empty => Ok(0),
 			Slot::KeyValue(key, value) => write_data(true, *key, *value, dest),
-			Slot::PosMask(pos, mask) => write_data(false, *pos, *mask, dest),
+			Slot::Root(root) => match root {
+				Root::PosMask(pos, mask) => write_data(false, *pos, *mask, dest)
+			},
 		}
 	}
 }

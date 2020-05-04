@@ -7,6 +7,7 @@ use crate::hamt::slot_indexer::SlotIndexer;
 use crate::hamt::util;
 use crate::hamt::util::u32_of_buf;
 use crate::hamt::writer::Dest;
+use crate::hamt::root::Root;
 
 #[cfg(test)]
 mod tests {
@@ -43,7 +44,7 @@ impl Frame {
 
 	pub fn with_ref_slot(&self, index: u8, pos: u32, mask: u32) -> Frame {
 		let mut slots = self.slots.to_owned();
-		slots[index as usize] = Slot::PosMask(pos, mask);
+		slots[index as usize] = Slot::Root(Root::PosMask(pos, mask));
 		Frame { slots }
 	}
 
@@ -57,9 +58,13 @@ impl Frame {
 			} else {
 				None
 			},
-			Slot::PosMask(pos, mask) => {
-				let frame = Frame::read(source, pos as usize, mask)?;
-				frame.read_indexer(indexer, depth + 1, source)?
+			Slot::Root(root) => {
+				match root {
+					Root::PosMask(pos, mask) => {
+						let frame = Frame::read(source, pos as usize, mask)?;
+						frame.read_indexer(indexer, depth + 1, source)?
+					}
+				}
 			}
 		};
 		Ok(value)

@@ -5,14 +5,15 @@ pub use writer::*;
 
 use crate::hamt::hasher::UniversalHasher;
 
-mod frame;
-mod reader;
-mod writer;
 mod data;
+mod frame;
 mod hasher;
+mod slot;
+mod reader;
 mod slot_indexer;
 mod util;
-mod slot;
+mod writer;
+mod root;
 
 pub struct Hamt<T> {
 	values: HashMap<u32, T>

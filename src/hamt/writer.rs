@@ -4,6 +4,7 @@ use std::ops::Deref;
 
 use crate::hamt::frame::Frame;
 use crate::hamt::reader::{Reader, Source};
+use crate::hamt::root::Root;
 use crate::hamt::slot::Slot;
 use crate::hamt::slot_indexer::SlotIndexer;
 
@@ -118,11 +119,13 @@ impl Writer {
 					}
 				}
 			}
-			Slot::PosMask(ref_pos, ref_mask) => {
-				let (sub_mask, sub_pos) = self.write_indexer(indexer, depth + 1, ref_pos as usize, ref_mask, value, reader)?;
-				let sub_pos = self.require_empty_high_bit(sub_pos as u32)?;
-				let (parent_mask, parent_pos) = frame.with_ref_slot(index, sub_pos, sub_mask).write(&mut self.dest)?;
-				Ok((parent_mask, parent_pos))
+			Slot::Root(root) => match root {
+				Root::PosMask(ref_pos, ref_mask) => {
+					let (sub_mask, sub_pos) = self.write_indexer(indexer, depth + 1, ref_pos as usize, ref_mask, value, reader)?;
+					let sub_pos = self.require_empty_high_bit(sub_pos as u32)?;
+					let (parent_mask, parent_pos) = frame.with_ref_slot(index, sub_pos, sub_mask).write(&mut self.dest)?;
+					Ok((parent_mask, parent_pos))
+				}
 			}
 			Slot::Empty => frame.with_value_slot(index, key, value).write(&mut self.dest),
 		}
