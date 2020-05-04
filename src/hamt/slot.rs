@@ -1,20 +1,22 @@
-use std::io::{Read, Write};
-use std::io;
+use std::error::Error;
 
-use crate::hamt::frame::Frame;
+use crate::hamt::reader::{Entry, EntryFile};
 use crate::hamt::root::Root;
-use crate::hamt::util;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum Slot {
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(crate) enum Slot {
 	Empty,
 	KeyValue(u32, u32),
 	Root(Root),
 }
 
+impl Default for Slot {
+	fn default() -> Self { Slot::Empty }
+}
+
 impl Slot {
-	pub fn read(source: &mut impl Read) -> io::Result<Slot> {
-		let (flag, a, b) = read_data(source)?;
+	pub fn read(source: &impl EntryFile) -> Result<Slot, Box<dyn Error>> {
+		let Entry { flag, a, b } = source.read_entry()?;
 		let slot = if flag {
 			Slot::KeyValue(a, b)
 		} else {
@@ -23,37 +25,26 @@ impl Slot {
 		Ok(slot)
 	}
 
-	pub fn write(&self, dest: &mut impl Write) -> io::Result<usize> {
+	pub fn write(&self, dest: &impl EntryFile) -> Result<(usize, Option<u64>), Box<dyn Error>> {
 		match self {
-			Slot::Empty => Ok(0),
-			Slot::KeyValue(key, value) => write_data(true, *key, *value, dest),
-			Slot::Root(root) => match root {
-				Root::PosMask(pos, mask) => write_data(false, *pos, *mask, dest)
-			},
+			Slot::Empty => Ok((0, None)),
+			Slot::KeyValue(key, value) => {
+				let a = *key;
+				let b = *value;
+				let (bytes, pos) = dest.write_entry(Entry { flag: true, a, b })?;
+				Ok((bytes, Some(pos)))
+			}
+			Slot::Root(root) => {
+				match root {
+					Root::PosMask(pos, mask) => {
+						let a = *pos;
+						let b = *mask;
+						let (bytes, end_pos) = dest.write_entry(Entry { flag: false, a, b })?;
+						Ok((bytes, Some(end_pos)))
+					}
+					Root::Frame(_) => unimplemented!(),
+				}
+			}
 		}
 	}
 }
-
-fn read_data(source: &mut impl Read) -> io::Result<(bool, u32, u32)> {
-	let mut buf = [0u8; 8];
-	source.read_exact(&mut buf)?;
-	let flagged = (buf[0] & 0x80) == 0x80;
-	buf[0] &= 0x7f;
-	let (a, b) = util::u32x2_of_buf(&buf);
-	Ok((flagged, a, b))
-}
-
-fn write_data(flag: bool, a: u32, b: u32, dest: &mut impl Write) -> io::Result<usize> {
-	assert_eq!((a & 0x80), 0);
-	let mut buf = [0u8; 4];
-	util::big_end_first_4(a, &mut buf);
-	if flag {
-		buf[0] |= 0x80;
-	}
-	dest.write(&buf)?;
-	util::big_end_first_4(b, &mut buf);
-	dest.write(&buf)?;
-	Ok(8)
-}
-
-

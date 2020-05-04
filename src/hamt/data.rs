@@ -1,14 +1,5 @@
 #[cfg(test)]
-use std::io::Cursor;
-
-#[cfg(test)]
-pub fn byte_cursor() -> Cursor<Vec<u8>> {
-	Cursor::new(Vec::new())
-}
-
-#[cfg(test)]
 pub mod fixture {
-	#[cfg(test)]
 	use crate::hamt::slot_indexer::SlotIndexer;
 
 	pub struct ZeroThenKeySlotIndexer {

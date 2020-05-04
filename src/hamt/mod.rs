@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
-pub use writer::*;
-
 use crate::hamt::hasher::UniversalHasher;
 
 mod data;
