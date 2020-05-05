@@ -1,13 +1,13 @@
 pub use self::beam::*;
+pub use self::chamber::*;
 pub use self::core::*;
-pub use self::nova::*;
-pub use self::ray::*;
+pub use self::echo::Echo;
 
 mod beam;
+mod chamber;
 mod core;
+mod echo;
 mod hamt;
-mod nova;
-mod ray;
 mod mem_file;
 mod util;
 
@@ -15,21 +15,29 @@ mod util;
 mod tests {
 	use std::error::Error;
 
-	use crate::{Nova, Said, Sayer, Ship, Subject};
+	use crate::{Echo, Said, Sayer, Ship, Subject};
 
 	#[test]
 	fn main() -> Result<(), Box<dyn Error>> {
 		let sayer = Sayer::Named("Bob".into());
 		let subject = Subject::Sayer(sayer.clone());
 		let ship = Ship::Static("counter", "Count");
-		let said = Said::Number(3);
+		let chamber = Echo::connect().latest()?;
+		let new_chamber = chamber.origin()
+			.batch_write(|ctx| {
+				ctx.say(&sayer, &subject, &ship, &Said::Number(3))
+			})?;
+		assert_eq!(new_chamber.full_read(&sayer, &subject, &ship), Some(&Said::Number(3)));
+		assert_eq!(chamber.full_read(&sayer, &subject, &ship), None);
+		Ok(())
+	}
 
-		let ray = Nova::connect().latest()?;
-		let new_ray = ray.origin().speak(|ctx| {
-			ctx.say(&sayer, &subject, &ship, &said);
-		})?;
-		let new_said = new_ray.said(&subject, &ship).unwrap();
-		assert_eq!(new_said, &said);
+	#[test]
+	fn said() -> Result<(), Box<dyn Error>> {
+		let chamber = Echo::connect().latest()?;
+		let new_chamber = chamber.origin().write(Said::Number(3))?;
+		assert_eq!(new_chamber.read(), Some(&Said::Number(3)));
+		assert_eq!(chamber.read(), None);
 		Ok(())
 	}
 }

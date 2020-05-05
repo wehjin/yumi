@@ -1,4 +1,5 @@
 use std::hash::{Hash, Hasher};
+use std::io;
 use std::sync::Arc;
 
 pub(crate) use root::*;
@@ -68,7 +69,7 @@ pub struct Extender<V> {
 }
 
 impl<T: Clone> Extender<T> {
-	pub fn extend(&self, key: &impl Key, value: &T) -> Self {
+	pub fn extend(&self, key: &impl Key, value: &T) -> io::Result<Self> {
 		let key = key.universal(1);
 		let value_pos = self.values.len();
 		let mut values = self.values.clone();
@@ -76,8 +77,8 @@ impl<T: Clone> Extender<T> {
 		let Root::PosMask(root_pos, root_mask) = self.root;
 		let mut writer = Writer::new(Arc::new(self.mem_file.clone()), root_pos as usize, root_mask);
 		let mut write_context = UniversalWriteScope {};
-		writer.write(key, value_pos as u32, &mut write_context).unwrap();
-		Extender { values, mem_file: self.mem_file.clone(), root: writer.root() }
+		writer.write(key, value_pos as u32, &mut write_context)?;
+		Ok(Extender { values, mem_file: self.mem_file.clone(), root: writer.root() })
 	}
 }
 

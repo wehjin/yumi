@@ -1,4 +1,6 @@
 use std::error::Error;
+use std::io;
+use std::io::ErrorKind;
 
 use crate::hamt::root::Root;
 use crate::mem_file::{Entry, EntryFile};
@@ -25,13 +27,14 @@ impl Slot {
 		Ok(slot)
 	}
 
-	pub fn write(&self, dest: &impl EntryFile) -> Result<(usize, Option<u64>), Box<dyn Error>> {
+	pub fn write(&self, dest: &impl EntryFile) -> io::Result<(usize, Option<u64>)> {
 		match self {
 			Slot::Empty => Ok((0, None)),
 			Slot::KeyValue(key, value) => {
 				let a = *key;
 				let b = *value;
-				let (bytes, pos) = dest.write_entry(Entry { flag: true, a, b })?;
+				let (bytes, pos) = dest.write_entry(Entry { flag: true, a, b })
+					.map_err(|it| io::Error::new(ErrorKind::Other, format!("KeyValue: {}", it.to_string())))?;
 				Ok((bytes, Some(pos)))
 			}
 			Slot::Root(root) => {
@@ -39,7 +42,8 @@ impl Slot {
 					Root::PosMask(pos, mask) => {
 						let a = *pos;
 						let b = *mask;
-						let (bytes, end_pos) = dest.write_entry(Entry { flag: false, a, b })?;
+						let (bytes, end_pos) = dest.write_entry(Entry { flag: false, a, b })
+							.map_err(|it| io::Error::new(ErrorKind::Other, format!("Root: {}", it.to_string())))?;
 						Ok((bytes, Some(end_pos)))
 					}
 				}

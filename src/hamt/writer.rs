@@ -9,6 +9,7 @@ use crate::hamt::root::Root;
 use crate::hamt::slot::Slot;
 use crate::hamt::slot_indexer::SlotIndexer;
 use crate::mem_file::EntryFile;
+use crate::util::io_error_of_box;
 
 #[cfg(test)]
 mod tests {
@@ -106,20 +107,24 @@ impl Writer {
 		Reader::new(source, root_pos, self.root_mask)
 	}
 
-	pub fn write(&mut self, key: u32, value: u32, ctx: &mut impl WriteContext) -> Result<(), Box<dyn Error>> {
+	pub fn write(&mut self, key: u32, value: u32, ctx: &mut impl WriteContext) -> io::Result<()> {
 		self.require_empty_high_bit(key)?;
-		let mut reader = self.reader()?;
+		let mut reader = self.reader().map_err(|e| {
+			io::Error::new(ErrorKind::Other, e.to_string())
+		})?;
 		let mut indexer = ctx.slot_indexer(key);
-		let (mask, pos) = self.write_indexer(&mut indexer, 0, reader.root_pos, reader.root_mask, value, &mut reader)?;
+		let (mask, pos) = self.write_indexer(&mut indexer, 0, reader.root_pos, reader.root_mask, value, &mut reader).map_err(|e| {
+			io::Error::new(ErrorKind::Other, e.to_string())
+		})?;
 		self.root_pos = pos;
 		self.root_mask = mask;
 		Ok(())
 	}
 
-	fn write_indexer(&mut self, indexer: &mut impl SlotIndexer, depth: usize, pos: usize, mask: u32, value: u32, reader: &mut Reader) -> Result<(u32, usize), Box<dyn Error>> {
+	fn write_indexer(&mut self, indexer: &mut impl SlotIndexer, depth: usize, pos: usize, mask: u32, value: u32, reader: &mut Reader) -> io::Result<(u32, usize)> {
 		let key = indexer.key();
 		let index = indexer.slot_index(depth);
-		let frame = reader.read_frame(pos, mask)?;
+		let frame = reader.read_frame(pos, mask).map_err(io_error_of_box)?;
 		match &frame.slots[index as usize] {
 			Slot::KeyValue(conflict_key, conflict_value) => {
 				if *conflict_key == key {
@@ -161,9 +166,9 @@ impl Writer {
 		}
 	}
 
-	fn require_empty_high_bit(&self, n: u32) -> Result<u32, Box<dyn Error>> {
+	fn require_empty_high_bit(&self, n: u32) -> io::Result<u32> {
 		if (n & 0x80000000) != 0 {
-			Err(Box::new(io::Error::new(ErrorKind::InvalidData, "N exceeds 31 bits")))
+			Err(io::Error::new(ErrorKind::InvalidData, "N exceeds 31 bits"))
 		} else {
 			Ok(n)
 		}

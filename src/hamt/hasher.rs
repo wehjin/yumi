@@ -41,7 +41,9 @@ impl UniversalHasher {
 }
 
 impl Hasher for UniversalHasher {
-	fn finish(&self) -> u64 { self.hash as u64 }
+	fn finish(&self) -> u64 {
+		self.hash as u64
+	}
 
 	fn write(&mut self, bytes: &[u8]) {
 		let level = self.level;

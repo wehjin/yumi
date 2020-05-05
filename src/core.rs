@@ -35,11 +35,13 @@ pub enum Said {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Ship {
-	Static(&'static str, &'static str)
+	None,
+	Static(&'static str, &'static str),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Subject {
+	None,
 	Sayer(Sayer),
 }
 
@@ -47,5 +49,6 @@ impl Key for Subject {}
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Sayer {
-	Named(String)
+	None,
+	Named(String),
 }

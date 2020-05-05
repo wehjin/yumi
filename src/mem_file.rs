@@ -1,10 +1,10 @@
-use std::error::Error;
-use std::io::{Cursor, Read, Seek, SeekFrom, Write};
+use std::{io, thread};
+use std::io::{Cursor, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::ops::Deref;
 use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
-use std::thread;
 
 use crate::util;
+use crate::util::io_error;
 
 #[derive(Debug, Clone)]
 pub struct MemFile {
@@ -12,10 +12,10 @@ pub struct MemFile {
 }
 
 enum MemFileAction {
-	Read(Sender<Entry>),
-	Seek(usize, Sender<()>),
-	Write(Entry, Sender<(usize, u64)>),
-	Length(Sender<usize>),
+	Read(Sender<io::Result<Entry>>),
+	Seek(usize, Sender<io::Result<()>>),
+	Write(Entry, Sender<io::Result<(usize, u64)>>),
+	Length(Sender<io::Result<usize>>),
 }
 
 impl MemFile {
@@ -28,37 +28,18 @@ impl MemFile {
 			for action in rx {
 				match action {
 					MemFileAction::Read(tx) => {
-						let mut buf = [0u8; 8];
-						let pos = cursor.seek(SeekFrom::Start(read_pos)).unwrap();
-						cursor.read_exact(&mut buf).unwrap();
-						read_pos = pos + 8;
-						let flag = (buf[0] & 0x80) == 0x80;
-						buf[0] &= 0x7f;
-						let (a, b) = util::u32x2_of_buf(&buf);
-						let entry = Entry { flag, a, b };
-						tx.send(entry).unwrap();
+						tx.send(read(&mut cursor, &mut read_pos)).unwrap();
 					}
 					MemFileAction::Seek(pos, tx) => {
 						read_pos = pos as u64;
-						tx.send(()).unwrap();
+						tx.send(Ok(())).unwrap();
 					}
-					MemFileAction::Write(Entry { flag, a, b }, tx) => {
-						assert_eq!((a & 0x80), 0);
-						let pos = cursor.seek(SeekFrom::Start(write_pos)).unwrap();
-						let mut buf = [0u8; 4];
-						util::big_end_first_4(a, &mut buf);
-						if flag {
-							buf[0] |= 0x80;
-						}
-						cursor.write_all(&buf).unwrap();
-						util::big_end_first_4(b, &mut buf);
-						cursor.write_all(&buf).unwrap();
-						write_pos = pos + 8;
-						tx.send((8, write_pos)).unwrap();
+					MemFileAction::Write(entry, tx) => {
+						tx.send(write(entry, &mut cursor, &mut write_pos)).unwrap()
 					}
 					MemFileAction::Length(tx) => {
 						let len = write_pos as usize;
-						tx.send(len).unwrap();
+						tx.send(Ok(len)).unwrap();
 					}
 				}
 			}
@@ -67,20 +48,50 @@ impl MemFile {
 	}
 }
 
+fn read(cursor: &mut Cursor<Vec<u8>>, read_pos: &mut u64) -> io::Result<Entry> {
+	let mut buf = [0u8; 8];
+	let pos = cursor.seek(SeekFrom::Start(*read_pos))?;
+	cursor.read_exact(&mut buf)?;
+	*read_pos = pos + 8;
+	let flag = (buf[0] & 0x80) == 0x80;
+	buf[0] &= 0x7f;
+	let (a, b) = util::u32x2_of_buf(&buf);
+	Ok(Entry { flag, a, b })
+}
+
+fn write(entry: Entry, cursor: &mut Cursor<Vec<u8>>, write_pos: &mut u64) -> io::Result<(usize, u64)> {
+	let Entry { flag, a, b } = entry;
+	if (a & 0x80000000) != 0 {
+		Err(io::Error::new(ErrorKind::InvalidData, format!("High bit found in entry {:?}", entry)))?
+	}
+	let pos = cursor.seek(SeekFrom::Start(*write_pos))?;
+	let mut buf = [0u8; 4];
+	util::big_end_first_4(a, &mut buf);
+	if flag {
+		buf[0] |= 0x80;
+	}
+	cursor.write_all(&buf)?;
+	util::big_end_first_4(b, &mut buf);
+	cursor.write_all(&buf)?;
+	*write_pos = pos + 8;
+	Ok((8, *write_pos))
+}
+
 pub trait EntryFile {
-	fn read_entry(&self) -> Result<Entry, Box<dyn Error>>;
-	fn seek(&self, pos: usize) -> Result<(), Box<dyn Error>>;
-	fn write_entry(&self, entry: Entry) -> Result<(usize, u64), Box<dyn Error>>;
-	fn len(&self) -> Result<usize, Box<dyn Error>>;
+	fn read_entry(&self) -> io::Result<Entry>;
+	fn seek(&self, pos: usize) -> io::Result<()>;
+	fn write_entry(&self, entry: Entry) -> io::Result<(usize, u64)>;
+	fn len(&self) -> io::Result<usize>;
 }
 
 impl<T: Deref<Target=dyn EntryFile>> EntryFile for T {
-	fn read_entry(&self) -> Result<Entry, Box<dyn Error>> { self.deref().read_entry() }
-	fn seek(&self, pos: usize) -> Result<(), Box<dyn Error>> { self.deref().seek(pos) }
-	fn write_entry(&self, entry: Entry) -> Result<(usize, u64), Box<dyn Error>> { self.deref().write_entry(entry) }
-	fn len(&self) -> Result<usize, Box<dyn Error>> { self.deref().len() }
+	fn read_entry(&self) -> io::Result<Entry> { self.deref().read_entry() }
+	fn seek(&self, pos: usize) -> io::Result<()> { self.deref().seek(pos) }
+	fn write_entry(&self, entry: Entry) -> io::Result<(usize, u64)> { self.deref().write_entry(entry) }
+	fn len(&self) -> io::Result<usize> { self.deref().len() }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Entry {
 	pub flag: bool,
 	pub a: u32,
@@ -88,31 +99,27 @@ pub struct Entry {
 }
 
 impl EntryFile for MemFile {
-	fn read_entry(&self) -> Result<Entry, Box<dyn Error>> {
+	fn read_entry(&self) -> io::Result<Entry> {
 		let (tx, rx) = channel();
 		self.tx.send(MemFileAction::Read(tx)).unwrap();
-		let entry = rx.recv()?;
-		Ok(entry)
+		rx.recv().map_err(io_error)?
 	}
 
-	fn seek(&self, pos: usize) -> Result<(), Box<dyn Error>> {
+	fn seek(&self, pos: usize) -> io::Result<()> {
 		let (tx, rx) = channel();
 		self.tx.send(MemFileAction::Seek(pos, tx)).unwrap();
-		let out = rx.recv()?;
-		Ok(out)
+		rx.recv().map_err(io_error)?
 	}
 
-	fn write_entry(&self, entry: Entry) -> Result<(usize, u64), Box<dyn Error>> {
+	fn write_entry(&self, entry: Entry) -> io::Result<(usize, u64)> {
 		let (tx, rx) = channel();
 		self.tx.send(MemFileAction::Write(entry, tx)).unwrap();
-		let result = rx.recv()?;
-		Ok(result)
+		rx.recv().map_err(io_error)?
 	}
 
-	fn len(&self) -> Result<usize, Box<dyn Error>> {
+	fn len(&self) -> io::Result<usize> {
 		let (tx, rx) = channel();
 		self.tx.send(MemFileAction::Length(tx)).unwrap();
-		let pos = rx.recv()?;
-		Ok(pos)
+		rx.recv().map_err(io_error)?
 	}
 }

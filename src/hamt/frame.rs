@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::io;
 
 use crate::hamt::root::Root;
 use crate::hamt::slot::Slot;
@@ -90,13 +91,13 @@ impl Frame {
 		Ok(frame)
 	}
 
-	pub fn write(&self, dest: &impl EntryFile) -> Result<(u32, usize), Box<dyn Error>> {
+	pub fn write(&self, dest: &impl EntryFile) -> io::Result<(u32, usize)> {
 		let (mask, _) = self.write_slots(dest)?;
 		let len = dest.len()?;
 		Ok((mask, len))
 	}
 
-	fn write_slots(&self, dest: &impl EntryFile) -> Result<(u32, usize), Box<dyn Error>> {
+	fn write_slots(&self, dest: &impl EntryFile) -> io::Result<(u32, usize)> {
 		self.slots.iter().try_fold(
 			(0u32, 0usize),
 			|(mask, total_bytes), slot| {
