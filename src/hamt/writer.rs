@@ -169,6 +169,8 @@ impl Writer {
 		}
 	}
 
+	pub fn root(&self) -> Root { Root::PosMask(self.root_pos as u32, self.root_mask) }
+
 	pub fn new(dest: Arc<dyn EntryFile>, root_pos: usize, root_mask: u32) -> Self {
 		Writer { dest: dest.clone(), root_pos, root_mask }
 	}

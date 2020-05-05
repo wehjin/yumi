@@ -1,13 +1,18 @@
 use std::error::Error;
-use std::sync::mpsc::{sync_channel, SyncSender};
+use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 use std::thread;
 
 use crate::{BeamContext, BeamScope, Ray, Speech};
-use crate::hamt::{Hamt, Root};
+use crate::hamt::Hamt;
 
 #[derive(Debug, Clone)]
 pub struct Nova {
 	tx: SyncSender<NovaAction>
+}
+
+enum NovaAction {
+	Speak(Speech, Sender<Ray>),
+	Latest(Sender<Ray>),
 }
 
 impl Nova {
@@ -15,7 +20,7 @@ impl Nova {
 		let mut scope = BeamScope { says: Vec::new() };
 		f(&mut scope);
 		let stanza = scope.stanza();
-		let (tx, rx) = sync_channel::<Ray>(1);
+		let (tx, rx) = channel::<Ray>();
 		let action = NovaAction::Speak(stanza, tx);
 		self.tx.send(action).unwrap();
 		let ray = rx.recv()?;
@@ -23,7 +28,7 @@ impl Nova {
 	}
 
 	pub fn latest(&self) -> Result<Ray, Box<dyn Error>> {
-		let (tx, rx) = sync_channel::<Ray>(1);
+		let (tx, rx) = channel::<Ray>();
 		let action = NovaAction::Latest(tx);
 		self.tx.send(action).unwrap();
 		let ray = rx.recv()?;
@@ -65,9 +70,4 @@ impl Nova {
 		});
 		nova
 	}
-}
-
-enum NovaAction {
-	Speak(Speech, SyncSender<Ray>),
-	Latest(SyncSender<Ray>),
 }

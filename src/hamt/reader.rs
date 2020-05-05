@@ -1,14 +1,9 @@
 use std::error::Error;
-use std::io::{Cursor, Read, Seek, SeekFrom, Write};
-use std::ops::Deref;
 use std::sync::Arc;
-use std::sync::mpsc::{sync_channel, SyncSender};
-use std::thread;
 
 use crate::hamt::frame::Frame;
 use crate::hamt::slot_indexer::SlotIndexer;
 use crate::mem_file::EntryFile;
-use crate::util;
 
 #[cfg(test)]
 mod tests {

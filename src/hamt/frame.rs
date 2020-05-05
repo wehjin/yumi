@@ -31,13 +31,13 @@ pub(crate) struct Frame {
 }
 
 impl Frame {
-	pub fn with_value_slot(&self, index: u8, key: u32, value: u32) -> Frame {
+	pub fn with_value_slot(&self, index: u8, key: u32, value: u32) -> Self {
 		let mut slots = self.slots.to_owned();
 		slots[index as usize] = Slot::KeyValue(key, value);
 		Frame { slots }
 	}
 
-	pub fn with_ref_slot(&self, index: u8, pos: u32, mask: u32) -> Frame {
+	pub fn with_ref_slot(&self, index: u8, pos: u32, mask: u32) -> Self {
 		let mut slots = self.slots.to_owned();
 		slots[index as usize] = Slot::Root(Root::PosMask(pos, mask));
 		Frame { slots }
