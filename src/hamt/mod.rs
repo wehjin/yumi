@@ -14,44 +14,52 @@ mod slot_indexer;
 mod writer;
 mod root;
 
-pub struct Hamt<T> {
-	values: HashMap<u32, T>
+pub struct Hamt<V> {
+	values: Vec<V>,
+	index: HashMap<u32, usize>,
 }
 
-impl<T: Clone> Hamt<T> {
-	pub fn commit(&mut self, extender: Extender<T>) {
+impl<V: Clone> Hamt<V> {
+	pub fn commit(&mut self, extender: Extender<V>) {
 		self.values = extender.values;
+		self.index = extender.index;
 	}
-	pub fn extender(&self) -> Extender<T> {
-		Extender { values: self.values.clone() }
+	pub fn extender(&self) -> Extender<V> {
+		Extender { values: self.values.clone(), index: self.index.clone() }
 	}
-	pub fn viewer(&self) -> Viewer<T> {
-		Viewer { values: self.values.clone() }
+	pub fn viewer(&self) -> Viewer<V> {
+		Viewer { values: self.values.clone(), index: self.index.clone() }
 	}
-	pub fn new() -> Hamt<T> {
-		Hamt { values: Default::default() }
+	pub fn new() -> Hamt<V> {
+		Hamt { values: Vec::new(), index: HashMap::new() }
 	}
 }
 
-pub struct Extender<T> {
-	values: HashMap<u32, T>
+pub struct Extender<V> {
+	values: Vec<V>,
+	index: HashMap<u32, usize>,
 }
 
 impl<T: Clone> Extender<T> {
 	pub fn extend(&self, key: &impl Key, value: &T) -> Self {
+		let value_pos = self.values.len();
 		let mut values = self.values.clone();
-		values.insert(key.universal(1), value.to_owned());
-		Extender { values }
+		values.push(value.to_owned());
+		let mut index = self.index.clone();
+		index.insert(key.universal(1), value_pos);
+		Extender { values, index }
 	}
 }
 
-pub struct Viewer<T> {
-	values: HashMap<u32, T>
+pub struct Viewer<V> {
+	values: Vec<V>,
+	index: HashMap<u32, usize>,
 }
 
 impl<T> Viewer<T> {
 	pub fn value(&self, key: &impl Key) -> Option<&T> {
-		self.values.get(&key.universal(1))
+		let key = key.universal(1);
+		self.index.get(&key).and_then(|pos| self.values.get(*pos))
 	}
 }
 
