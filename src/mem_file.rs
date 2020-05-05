@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::io::{Cursor, Read, Seek, SeekFrom, Write};
 use std::ops::Deref;
-use std::sync::mpsc::{sync_channel, SyncSender};
+use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 use std::thread;
 
 use crate::util;
@@ -12,60 +12,10 @@ pub struct MemFile {
 }
 
 enum MemFileAction {
-	Read(SyncSender<Entry>),
-	Seek(usize, SyncSender<()>),
-	Write(Entry, SyncSender<(usize, u64)>),
-	Length(SyncSender<usize>),
-}
-
-pub trait EntryFile {
-	fn read_entry(&self) -> Result<Entry, Box<dyn Error>>;
-	fn seek(&self, pos: usize) -> Result<(), Box<dyn Error>>;
-	fn write_entry(&self, entry: Entry) -> Result<(usize, u64), Box<dyn Error>>;
-	fn len(&self) -> Result<usize, Box<dyn Error>>;
-}
-
-impl<T: Deref<Target=dyn EntryFile>> EntryFile for T {
-	fn read_entry(&self) -> Result<Entry, Box<dyn Error>> { self.deref().read_entry() }
-	fn seek(&self, pos: usize) -> Result<(), Box<dyn Error>> { self.deref().seek(pos) }
-	fn write_entry(&self, entry: Entry) -> Result<(usize, u64), Box<dyn Error>> { self.deref().write_entry(entry) }
-	fn len(&self) -> Result<usize, Box<dyn Error>> { self.deref().len() }
-}
-
-pub struct Entry {
-	pub flag: bool,
-	pub a: u32,
-	pub b: u32,
-}
-
-impl EntryFile for MemFile {
-	fn read_entry(&self) -> Result<Entry, Box<dyn Error>> {
-		let (tx, rx) = sync_channel(1);
-		self.tx.send(MemFileAction::Read(tx)).unwrap();
-		let entry = rx.recv()?;
-		Ok(entry)
-	}
-
-	fn seek(&self, pos: usize) -> Result<(), Box<dyn Error>> {
-		let (tx, rx) = sync_channel(1);
-		self.tx.send(MemFileAction::Seek(pos, tx)).unwrap();
-		let out = rx.recv()?;
-		Ok(out)
-	}
-
-	fn write_entry(&self, entry: Entry) -> Result<(usize, u64), Box<dyn Error>> {
-		let (tx, rx) = sync_channel(1);
-		self.tx.send(MemFileAction::Write(entry, tx)).unwrap();
-		let result = rx.recv()?;
-		Ok(result)
-	}
-
-	fn len(&self) -> Result<usize, Box<dyn Error>> {
-		let (tx, rx) = sync_channel(1);
-		self.tx.send(MemFileAction::Length(tx)).unwrap();
-		let pos = rx.recv()?;
-		Ok(pos)
-	}
+	Read(Sender<Entry>),
+	Seek(usize, Sender<()>),
+	Write(Entry, Sender<(usize, u64)>),
+	Length(Sender<usize>),
 }
 
 impl MemFile {
@@ -114,5 +64,55 @@ impl MemFile {
 			}
 		});
 		MemFile { tx }
+	}
+}
+
+pub trait EntryFile {
+	fn read_entry(&self) -> Result<Entry, Box<dyn Error>>;
+	fn seek(&self, pos: usize) -> Result<(), Box<dyn Error>>;
+	fn write_entry(&self, entry: Entry) -> Result<(usize, u64), Box<dyn Error>>;
+	fn len(&self) -> Result<usize, Box<dyn Error>>;
+}
+
+impl<T: Deref<Target=dyn EntryFile>> EntryFile for T {
+	fn read_entry(&self) -> Result<Entry, Box<dyn Error>> { self.deref().read_entry() }
+	fn seek(&self, pos: usize) -> Result<(), Box<dyn Error>> { self.deref().seek(pos) }
+	fn write_entry(&self, entry: Entry) -> Result<(usize, u64), Box<dyn Error>> { self.deref().write_entry(entry) }
+	fn len(&self) -> Result<usize, Box<dyn Error>> { self.deref().len() }
+}
+
+pub struct Entry {
+	pub flag: bool,
+	pub a: u32,
+	pub b: u32,
+}
+
+impl EntryFile for MemFile {
+	fn read_entry(&self) -> Result<Entry, Box<dyn Error>> {
+		let (tx, rx) = channel();
+		self.tx.send(MemFileAction::Read(tx)).unwrap();
+		let entry = rx.recv()?;
+		Ok(entry)
+	}
+
+	fn seek(&self, pos: usize) -> Result<(), Box<dyn Error>> {
+		let (tx, rx) = channel();
+		self.tx.send(MemFileAction::Seek(pos, tx)).unwrap();
+		let out = rx.recv()?;
+		Ok(out)
+	}
+
+	fn write_entry(&self, entry: Entry) -> Result<(usize, u64), Box<dyn Error>> {
+		let (tx, rx) = channel();
+		self.tx.send(MemFileAction::Write(entry, tx)).unwrap();
+		let result = rx.recv()?;
+		Ok(result)
+	}
+
+	fn len(&self) -> Result<usize, Box<dyn Error>> {
+		let (tx, rx) = channel();
+		self.tx.send(MemFileAction::Length(tx)).unwrap();
+		let pos = rx.recv()?;
+		Ok(pos)
 	}
 }
