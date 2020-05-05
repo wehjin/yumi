@@ -1,6 +1,6 @@
 use std::hash::Hasher;
 
-use crate::hamt::util;
+use crate::util;
 
 #[cfg(test)]
 mod tests {

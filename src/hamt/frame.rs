@@ -1,14 +1,14 @@
 use std::error::Error;
 
-use crate::hamt::reader::EntryFile;
 use crate::hamt::root::Root;
 use crate::hamt::slot::Slot;
 use crate::hamt::slot_indexer::SlotIndexer;
+use crate::mem_file::EntryFile;
 
 #[cfg(test)]
 mod tests {
 	use crate::hamt::frame::Frame;
-	use crate::hamt::reader::{EntryFile, MemFile};
+	use crate::mem_file::{EntryFile, MemFile};
 
 	#[test]
 	fn write_then_read() {

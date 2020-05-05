@@ -3,7 +3,7 @@ use std::sync::mpsc::{sync_channel, SyncSender};
 use std::thread;
 
 use crate::{BeamContext, BeamScope, Ray, Speech};
-use crate::hamt::Hamt;
+use crate::hamt::{Hamt, Root};
 
 #[derive(Debug, Clone)]
 pub struct Nova {

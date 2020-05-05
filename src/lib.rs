@@ -8,6 +8,8 @@ mod core;
 mod hamt;
 mod nova;
 mod ray;
+mod mem_file;
+mod util;
 
 #[cfg(test)]
 mod tests {

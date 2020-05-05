@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
+pub(crate) use root::*;
+
 use crate::hamt::hasher::UniversalHasher;
 
 mod data;
@@ -9,7 +11,6 @@ mod hasher;
 mod slot;
 mod reader;
 mod slot_indexer;
-mod util;
 mod writer;
 mod root;
 
@@ -61,4 +62,3 @@ pub trait Key: Hash {
 		hasher.finish() as u32
 	}
 }
-

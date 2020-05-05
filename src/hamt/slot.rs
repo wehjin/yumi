@@ -1,7 +1,7 @@
 use std::error::Error;
 
-use crate::hamt::reader::{Entry, EntryFile};
 use crate::hamt::root::Root;
+use crate::mem_file::{Entry, EntryFile};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum Slot {

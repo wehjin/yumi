@@ -4,19 +4,20 @@ use std::io::ErrorKind;
 use std::sync::Arc;
 
 use crate::hamt::frame::Frame;
-use crate::hamt::reader::{EntryFile, Reader};
+use crate::hamt::reader::Reader;
 use crate::hamt::root::Root;
 use crate::hamt::slot::Slot;
 use crate::hamt::slot_indexer::SlotIndexer;
+use crate::mem_file::EntryFile;
 
 #[cfg(test)]
 mod tests {
 	use std::sync::Arc;
 
 	use crate::hamt::data::{fixture::ZeroThenKeySlotIndexer};
-	use crate::hamt::reader::MemFile;
 	use crate::hamt::slot_indexer::SlotIndexer;
 	use crate::hamt::writer::{WriteContext, Writer};
+	use crate::mem_file::MemFile;
 
 	struct WriteScope { transition_depth: usize }
 
