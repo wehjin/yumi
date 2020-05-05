@@ -66,10 +66,6 @@ impl Frame {
 						let value = frame.read_indexer(indexer, depth + 1, source)?;
 						value
 					}
-					Root::Frame(frame) => {
-						let value = frame.read_indexer(indexer, depth + 1, source)?;
-						value
-					}
 				}
 			}
 		};

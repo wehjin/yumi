@@ -42,7 +42,6 @@ impl Slot {
 						let (bytes, end_pos) = dest.write_entry(Entry { flag: false, a, b })?;
 						Ok((bytes, Some(end_pos)))
 					}
-					Root::Frame(_) => unimplemented!(),
 				}
 			}
 		}

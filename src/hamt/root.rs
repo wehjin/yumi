@@ -10,15 +10,15 @@ mod tests {
 	}
 }
 
+#[derive()]
+pub(crate) enum MemRoot {}
+
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum Root {
 	PosMask(u32, u32),
-	Frame(Box<Frame>),
 }
 
 impl Root {
-	pub fn new() -> Self {
-		Root::Frame(Box::new(Frame::empty()))
-	}
+	pub fn new() -> Self { Root::PosMask(0, 0) }
 }

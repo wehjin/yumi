@@ -151,9 +151,6 @@ impl Writer {
 						let (parent_mask, parent_pos) = parent_frame.write(&mut self.dest)?;
 						Ok((parent_mask, parent_pos))
 					}
-					Root::Frame(_) => {
-						unimplemented!()
-					}
 				}
 			}
 			Slot::Empty => {
