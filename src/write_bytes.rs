@@ -5,7 +5,7 @@ use std::ops::Deref;
 use crate::{Said, Sayer, Ship, Subject};
 use crate::util::{big_end_first_2, big_end_first_8};
 
-trait WriteBytes {
+pub trait WriteBytes {
 	fn write_bytes(&self, writer: &mut impl Write) -> io::Result<usize>;
 }
 
