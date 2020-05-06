@@ -16,7 +16,12 @@ pub trait AmpContext {
 
 impl AmpContext for AmpScope {
 	fn say(&mut self, sayer: &Sayer, subject: &Subject, ship: &Ship, said: &Said) {
-		let say = Say::Assert(sayer.clone(), subject.clone(), ship.clone(), said.clone());
+		let say = Say {
+			sayer: sayer.clone(),
+			subject: subject.clone(),
+			ship: ship.clone(),
+			said: Some(said.clone()),
+		};
 		self.says.push(say);
 	}
 }

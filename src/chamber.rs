@@ -13,8 +13,12 @@ impl Chamber {
 	}
 
 	fn said_of_key(&self, key: &EchoKey) -> Option<&Said> {
-		let say = self.viewer.value(key);
-		let said = say.map(Say::said).flatten();
+		let said = self.viewer.value(key).map(|say| &say.said);
+		let said = said.unwrap_or(&None);
+		let said = match said {
+			None => None,
+			Some(said) => Some(said)
+		};
 		said
 	}
 

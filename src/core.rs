@@ -8,24 +8,11 @@ pub(crate) struct Speech {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum Say {
-	Assert(Sayer, Subject, Ship, Said),
-	Retract(Sayer, Subject, Ship, Said),
-}
-
-impl Say {
-	pub fn said(&self) -> Option<&Said> {
-		match self {
-			Say::Assert(_sayer, _subject, _ship, said) => Some(said),
-			Say::Retract(_sayer, _subject, _ship, _said) => None,
-		}
-	}
-	pub fn subject(&self) -> &Subject {
-		match self {
-			Say::Assert(_sayer, subject, _ship, _) => subject,
-			Say::Retract(_sayer, subject, _ship, _) => subject,
-		}
-	}
+pub struct Say {
+	pub sayer: Sayer,
+	pub subject: Subject,
+	pub ship: Ship,
+	pub said: Option<Said>,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]

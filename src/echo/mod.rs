@@ -22,7 +22,7 @@ enum Action {
 
 impl Echo {
 	pub fn write(&self, said: Said) -> io::Result<Chamber> {
-		let say = Say::Assert(Sayer::Unit, Subject::Unit, Ship::Unit, said);
+		let say = Say { sayer: Sayer::Unit, subject: Subject::Unit, ship: Ship::Unit, said: Some(said) };
 		let speech = Speech { says: vec![say] };
 		self.send_speech(speech)
 	}
@@ -90,14 +90,7 @@ impl Echo {
 
 impl Say {
 	pub(crate) fn as_echo_key(&self) -> EchoKey {
-		match self {
-			Say::Assert(sayer, subject, ship, _) => {
-				EchoKey::SayerSubjectShip(sayer.clone(), subject.clone(), ship.clone())
-			}
-			Say::Retract(sayer, subject, ship, _) => {
-				EchoKey::SayerSubjectShip(sayer.clone(), subject.clone(), ship.clone())
-			}
-		}
+		EchoKey::SayerSubjectShip(self.sayer.clone(), self.subject.clone(), self.ship.clone())
 	}
 }
 

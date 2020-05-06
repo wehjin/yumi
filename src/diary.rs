@@ -13,7 +13,7 @@ mod tests {
 	fn main() {
 		let diary = Diary::temp();
 		let mut writer = diary.writer().unwrap();
-		let say = Say::Assert(Sayer::Unit, Subject::Unit, Ship::Unit, Said::Number(3));
+		let say = Say { sayer: Sayer::Unit, subject: Subject::Unit, ship: Ship::Unit, said: Some(Said::Number(3)) };
 		let say_pos = writer.write_say(&say).unwrap();
 		assert_eq!(say_pos, ());
 	}
