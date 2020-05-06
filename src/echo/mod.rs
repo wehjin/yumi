@@ -22,7 +22,7 @@ enum Action {
 
 impl Echo {
 	pub fn write(&self, said: Said) -> io::Result<Chamber> {
-		let say = Say::Assert(Sayer::None, Subject::None, Ship::None, said);
+		let say = Say::Assert(Sayer::Unit, Subject::Unit, Ship::Unit, said);
 		let speech = Speech { says: vec![say] };
 		self.send_speech(speech)
 	}

@@ -19,7 +19,7 @@ impl Chamber {
 	}
 
 	pub fn read(&self) -> Option<&Said> {
-		let key = EchoKey::SayerSubjectShip(Sayer::None, Subject::None, Ship::None);
+		let key = EchoKey::SayerSubjectShip(Sayer::Unit, Subject::Unit, Ship::Unit);
 		self.said_of_key(&key)
 	}
 

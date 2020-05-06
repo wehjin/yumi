@@ -10,7 +10,7 @@ mod tests {
 
 	#[test]
 	fn hash() {
-		let key = EchoKey::SayerSubjectShip(Sayer::None, Subject::None, Ship::None);
+		let key = EchoKey::SayerSubjectShip(Sayer::Unit, Subject::Unit, Ship::Unit);
 		let hash = key.universal(1);
 		assert!(hash < 0x80000000)
 	}
