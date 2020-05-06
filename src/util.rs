@@ -3,12 +3,29 @@ use std::io;
 use std::io::ErrorKind;
 use std::sync::mpsc::RecvError;
 
+pub(crate) fn big_end_first_2(n: u16, buf: &mut [u8; 2]) {
+	buf[0] = (n >> 8) as u8;
+	buf[1] = (n >> 0) as u8;
+}
+
 pub(crate) fn big_end_first_4(n: u32, buf: &mut [u8; 4]) {
 	buf[0] = (n >> 24) as u8;
 	buf[1] = (n >> 16) as u8;
 	buf[2] = (n >> 8) as u8;
 	buf[3] = (n >> 0) as u8;
 }
+
+pub(crate) fn big_end_first_8(n: u64, buf: &mut [u8; 8]) {
+	buf[0] = (n >> 56) as u8;
+	buf[1] = (n >> 48) as u8;
+	buf[2] = (n >> 40) as u8;
+	buf[3] = (n >> 32) as u8;
+	buf[4] = (n >> 24) as u8;
+	buf[5] = (n >> 16) as u8;
+	buf[6] = (n >> 8) as u8;
+	buf[7] = (n >> 0) as u8;
+}
+
 
 pub(crate) fn u32x2_of_buf(buf: &[u8; 8]) -> (u32, u32) {
 	(

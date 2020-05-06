@@ -37,5 +37,3 @@ impl Hash for EchoKey {
 }
 
 const DIVIDER: &[u8] = &['/' as u8];
-
-

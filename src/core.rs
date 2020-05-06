@@ -15,15 +15,10 @@ pub struct Say {
 	pub said: Option<Said>,
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum Said {
-	Number(u64)
-}
-
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum Ship {
+pub enum Sayer {
 	Unit,
-	Static(&'static str, &'static str),
+	Named(String),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -32,10 +27,15 @@ pub enum Subject {
 	Sayer(Sayer),
 }
 
-impl Key for Subject {}
-
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum Sayer {
+pub enum Ship {
 	Unit,
-	Named(String),
+	Static(&'static str, &'static str),
 }
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum Said {
+	Number(u64)
+}
+
+impl Key for Subject {}

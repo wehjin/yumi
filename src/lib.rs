@@ -13,6 +13,7 @@ mod hamt;
 mod mem_file;
 mod util;
 pub mod diary;
+pub mod write_bytes;
 
 #[cfg(test)]
 mod tests {
