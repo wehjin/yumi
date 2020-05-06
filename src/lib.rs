@@ -1,3 +1,5 @@
+extern crate rand;
+
 pub use self::beam::*;
 pub use self::chamber::*;
 pub use self::core::*;
@@ -10,6 +12,7 @@ mod echo;
 mod hamt;
 mod mem_file;
 mod util;
+pub mod diary;
 
 #[cfg(test)]
 mod tests {
