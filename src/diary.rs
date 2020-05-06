@@ -13,12 +13,13 @@ mod tests {
 
 	#[test]
 	fn main() {
-		let diary = Diary::temp().unwrap();
+		let mut diary = Diary::temp().unwrap();
 		let mut writer = diary.writer().unwrap();
 		let say = Say { sayer: Sayer::Unit, subject: Subject::Unit, ship: Ship::Unit, said: Some(Said::Number(3)) };
 		let starts = writer.write(&say).unwrap();
 		assert_eq!(starts, SayPos { sayer_start: 0, subject_start: 1, ship_start: 2, said_start: 3, end: 4 + 8 });
-		assert_eq!(writer.file_size, 12)
+		diary.commit(&writer);
+		assert_eq!(diary.len_in_bytes(), 12)
 	}
 }
 
@@ -75,11 +76,18 @@ pub struct Diary {
 }
 
 impl Diary {
+	pub fn commit(&mut self, writer: &Writer) {
+		self.file_size = writer.file_size;
+	}
+
 	pub fn writer(&self) -> io::Result<Writer> {
 		let file = OpenOptions::new().append(true).create(true).open(&self.file_path)?;
 		let file_size = self.file_size;
+		file.set_len(file_size as u64)?;
 		Ok(Writer { file, file_size })
 	}
+
+	pub fn len_in_bytes(&self) -> usize { self.file_size }
 
 	pub fn temp() -> io::Result<Diary> {
 		let mut path = std::env::temp_dir();
