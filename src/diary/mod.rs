@@ -5,6 +5,9 @@ use std::path::{Path, PathBuf};
 pub use self::reader::*;
 pub use self::writer::*;
 
+mod writer;
+mod reader;
+
 #[cfg(test)]
 mod tests {
 	use crate::{Said, Say, Sayer, Ship, Subject};
@@ -21,45 +24,14 @@ mod tests {
 			diary.commit(&writer);
 			assert_eq!(diary.len_in_bytes(), 12);
 			let mut commit_reader = diary.reader().unwrap();
-			let commit_say = commit_reader.read(&pos).unwrap();
+			let commit_say = commit_reader.read(pos.sayer_start).unwrap();
 			assert_eq!(commit_say, start_say);
 			(diary.file_path.to_owned(), pos)
 		};
 		let reload_diary = Diary::load(&path).unwrap();
 		let mut reload_reader = reload_diary.reader().unwrap();
-		let reload_say = reload_reader.read(&pos).unwrap();
+		let reload_say = reload_reader.read(pos.sayer_start).unwrap();
 		assert_eq!(reload_say, start_say);
-	}
-}
-
-mod writer;
-
-mod reader {
-	use std::fs::File;
-	use std::io;
-	use std::io::{Seek, SeekFrom};
-
-	use crate::{Say, Ship, Subject};
-	use crate::bytes::ReadBytes;
-	use crate::diary::SayPos;
-	use crate::Sayer;
-
-	pub struct Reader {
-		pub file: File,
-		pub file_size: usize,
-	}
-
-	impl Reader {
-		pub fn read(&mut self, pos: &SayPos) -> io::Result<Say> {
-			let start = pos.sayer_start;
-			self.file.seek(SeekFrom::Start(start as u64))?;
-			let sayer = Sayer::read_bytes(&mut self.file)?;
-			let subject = Subject::read_bytes(&mut self.file)?;
-			let ship = Ship::read_bytes(&mut self.file)?;
-			let said = Option::read_bytes(&mut self.file)?;
-			let say = Say { sayer, subject, ship, said };
-			Ok(say)
-		}
 	}
 }
 
