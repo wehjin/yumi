@@ -61,6 +61,10 @@ impl From<Pos> for u64 {
 	fn from(pos: Pos) -> Self { pos.start as Self }
 }
 
+impl From<Pos> for u32 {
+	fn from(pos: Pos) -> Self { pos.start as Self }
+}
+
 impl Add<Pos> for Pos {
 	type Output = Pos;
 	fn add(self, rhs: Pos) -> Self::Output {

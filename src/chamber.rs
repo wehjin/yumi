@@ -1,28 +1,25 @@
-use crate::{Echo, hamt, Said, Say, Sayer, Ship, Subject};
+use crate::{Echo, hamt, Said, Sayer, Ship, Subject};
 use crate::echo::EchoKey;
 
 pub struct Chamber {
 	pub(crate) origin: Echo,
-	pub(crate) viewer: hamt::Viewer<Say>,
+	pub(crate) viewer: hamt::Viewer<Option<Said>>,
 }
 
 impl Chamber {
-	pub fn full_read(&self, sayer: &Sayer, subject: &Subject, ship: &Ship) -> Option<&Said> {
+	pub fn full_read(&mut self, sayer: &Sayer, subject: &Subject, ship: &Ship) -> &Option<Said> {
 		let key = EchoKey::SayerSubjectShip(sayer.clone(), subject.clone(), ship.clone());
 		self.said_of_key(&key)
 	}
 
-	fn said_of_key(&self, key: &EchoKey) -> Option<&Said> {
-		let said = self.viewer.value(key).map(|say| &say.said);
-		let said = said.unwrap_or(&None);
-		let said = match said {
-			None => None,
-			Some(said) => Some(said)
-		};
-		said
+	fn said_of_key(&mut self, key: &EchoKey) -> &Option<Said> {
+		match self.viewer.value(key) {
+			None => &None,
+			Some(said) => said
+		}
 	}
 
-	pub fn read(&self) -> Option<&Said> {
+	pub fn read(&mut self) -> &Option<Said> {
 		let key = EchoKey::SayerSubjectShip(Sayer::Unit, Subject::Unit, Ship::Unit);
 		self.said_of_key(&key)
 	}

@@ -3,6 +3,7 @@ use std::error::Error;
 use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
 use crate::{AmpContext, AmpScope, Chamber, Said, Say, Sayer, Ship, Speech, Subject};
+use crate::diary::Diary;
 use crate::hamt::Hamt;
 use crate::util::io_error;
 
@@ -53,7 +54,8 @@ impl Echo {
 		let echo = Echo { tx };
 		let thread_echo = echo.clone();
 		thread::spawn(move || {
-			let mut hamt = Hamt::new();
+			let said_diary = Diary::temp().unwrap();
+			let mut hamt = Hamt::new(said_diary);
 			for action in rx {
 				match action {
 					Action::Speech(speech, tx) => {
@@ -63,7 +65,7 @@ impl Echo {
 							|result, say| {
 								if let Ok(extender) = result {
 									let key = say.as_echo_key();
-									let extension = extender.extend(&key, say);
+									let extension = extender.extend(&key, &say.said);
 									extension
 								} else { result }
 							},

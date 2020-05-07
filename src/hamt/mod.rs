@@ -4,6 +4,9 @@ use std::sync::Arc;
 
 pub(crate) use root::*;
 
+use crate::bytes::{ReadBytes, WriteBytes};
+use crate::diary;
+use crate::diary::Diary;
 use crate::hamt::hasher::UniversalHasher;
 use crate::hamt::reader::Reader;
 use crate::hamt::slot_indexer::{SlotIndexer, UniversalSlotPicker};
@@ -19,34 +22,35 @@ mod slot_indexer;
 mod writer;
 mod root;
 
-pub struct Hamt<V> {
-	values: Vec<V>,
+pub struct Hamt {
+	value_diary: Diary,
 	mem_file: MemFile,
 	root: Root,
 }
 
-impl<V: Clone> Hamt<V> {
-	pub fn commit(&mut self, extender: Extender<V>) {
-		self.values = extender.values;
+impl Hamt where {
+	pub fn commit(&mut self, extender: Extender) {
+		self.value_diary.commit(&extender.value_diary);
 		self.root = extender.root;
 	}
-	pub fn extender(&self) -> Extender<V> {
+	pub fn extender(&self) -> Extender {
 		Extender {
-			values: self.values.clone(),
+			value_diary: self.value_diary.writer().unwrap(),
 			mem_file: self.mem_file.clone(),
 			root: self.root.clone(),
 		}
 	}
-	pub fn viewer(&self) -> Viewer<V> {
+	pub fn viewer<V: WriteBytes + ReadBytes<V>>(&self) -> Viewer<V> {
 		Viewer {
-			values: self.values.clone(),
+			value_diary: self.value_diary.reader().unwrap(),
+			value: None,
 			mem_file: self.mem_file.clone(),
 			root: self.root.clone(),
 		}
 	}
-	pub fn new() -> Hamt<V> {
+	pub fn new(values_diary: Diary) -> Hamt {
 		Hamt {
-			values: Vec::new(),
+			value_diary: values_diary,
 			mem_file: MemFile::new(),
 			root: Root::new(),
 		}
@@ -62,40 +66,51 @@ impl WriteContext for UniversalWriteScope {
 	}
 }
 
-pub struct Extender<V> {
-	values: Vec<V>,
+pub struct Extender {
+	value_diary: diary::Writer,
 	mem_file: MemFile,
 	root: Root,
 }
 
-impl<T: Clone> Extender<T> {
-	pub fn extend(&self, key: &impl Key, value: &T) -> io::Result<Self> {
-		let key = key.universal(1);
-		let value_pos = self.values.len();
-		let mut values = self.values.clone();
-		values.push(value.to_owned());
+impl Extender {
+	pub fn extend<V: WriteBytes>(mut self, key: &impl Key, value: &V) -> io::Result<Self> {
+		let (value_pos, _value_size) = self.value_diary.write(value)?;
 		let Root::PosMask(root_pos, root_mask) = self.root;
 		let mut writer = Writer::new(Arc::new(self.mem_file.clone()), root_pos as usize, root_mask);
 		let mut write_context = UniversalWriteScope {};
-		writer.write(key, value_pos as u32, &mut write_context)?;
-		Ok(Extender { values, mem_file: self.mem_file.clone(), root: writer.root() })
+		let key = key.universal(1);
+		writer.write(key, value_pos.into(), &mut write_context)?;
+		Ok(Extender {
+			value_diary: self.value_diary,
+			mem_file: self.mem_file.clone(),
+			root: writer.root(),
+		})
 	}
 }
 
-pub struct Viewer<V> {
-	values: Vec<V>,
+pub struct Viewer<V: ReadBytes<V>> {
+	value_diary: diary::Reader,
+	value: Option<V>,
 	mem_file: MemFile,
 	root: Root,
 }
 
-impl<T> Viewer<T> {
-	pub fn value(&self, key: &impl Key) -> Option<&T> {
+impl<V: ReadBytes<V>> Viewer<V> {
+	pub fn value(&mut self, key: &impl Key) -> &Option<V> {
 		let key = key.universal(1);
 		let Root::PosMask(root_pos, root_mask) = self.root;
 		let reader = Reader::new(Arc::new(self.mem_file.clone()), root_pos as usize, root_mask).unwrap();
 		let mut indexer = UniversalSlotPicker::new(key);
-		reader.read(&mut indexer).unwrap()
-			.and_then(|pos| self.values.get(pos as usize))
+		let u32_pos = reader.read(&mut indexer).unwrap();
+		let value = match u32_pos {
+			None => None,
+			Some(u32_pos) => {
+				let value = self.value_diary.read::<V>((u32_pos as usize).into()).unwrap();
+				Some(value)
+			}
+		};
+		self.value = value;
+		&self.value
 	}
 }
 
