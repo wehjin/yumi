@@ -15,12 +15,11 @@ mod tests {
 	fn main() {
 		let start_say = Say { sayer: Sayer::Unit, subject: Subject::Unit, ship: Ship::Unit, said: Some(Said::Number(3)) };
 		let (path, pos) = {
-			let mut diary = Diary::temp().unwrap();
+			let diary = Diary::temp().unwrap();
 			let mut writer = diary.writer().unwrap();
 			let pos = writer.write(&start_say).unwrap();
 			assert_eq!(pos, SayPos { sayer_start: 0, subject_start: 1, ship_start: 2, said_start: 3, end: 4 + 8 });
 			diary.commit(&writer);
-			assert_eq!(diary.len_in_bytes(), 12);
 			let mut commit_reader = diary.reader().unwrap();
 			let commit_say = commit_reader.read(pos.sayer_start).unwrap();
 			assert_eq!(commit_say, start_say);
