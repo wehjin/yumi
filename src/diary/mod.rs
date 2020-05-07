@@ -1,6 +1,10 @@
-pub use self::diary::*;
-pub use self::reader::*;
-pub use self::writer::*;
+use std::fmt;
+use std::fmt::Formatter;
+use std::ops::Add;
+
+pub use self::diary::Diary;
+pub use self::reader::Reader;
+pub use self::writer::Writer;
 
 mod writer;
 mod reader;
@@ -18,7 +22,7 @@ mod tests {
 			let diary = Diary::temp().unwrap();
 			let mut writer = diary.writer().unwrap();
 			let pos = writer.write(&start_say).unwrap();
-			assert_eq!(pos, SayPos { sayer_start: 0, subject_start: 1, ship_start: 2, said_start: 3, end: 4 + 8 });
+			assert_eq!(pos, SayPos { sayer_start: 0.into(), subject_start: 1.into(), ship_start: 2.into(), said_start: 3.into(), end: (4 + 8).into() });
 			diary.commit(&writer);
 			let mut commit_reader = diary.reader().unwrap();
 			let commit_say = commit_reader.read(pos.sayer_start).unwrap();
@@ -33,11 +37,43 @@ mod tests {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct Pos { start: usize }
+
+impl Pos {
+	pub fn at(start: usize) -> Self { Pos { start } }
+}
+
+impl fmt::Display for Pos {
+	fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+		f.write_str(&format!("{}", self.start))
+	}
+}
+
+impl From<usize> for Pos {
+	fn from(n: usize) -> Self { Pos { start: n } }
+}
+
+impl From<Pos> for usize {
+	fn from(pos: Pos) -> Self { pos.start as Self }
+}
+
+impl From<Pos> for u64 {
+	fn from(pos: Pos) -> Self { pos.start as Self }
+}
+
+impl Add<Pos> for Pos {
+	type Output = Pos;
+	fn add(self, rhs: Pos) -> Self::Output {
+		Pos { start: self.start + rhs.start }
+	}
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct SayPos {
-	pub sayer_start: usize,
-	pub subject_start: usize,
-	pub ship_start: usize,
-	pub said_start: usize,
-	pub end: usize,
+	pub sayer_start: Pos,
+	pub subject_start: Pos,
+	pub ship_start: Pos,
+	pub said_start: Pos,
+	pub end: Pos,
 }
 

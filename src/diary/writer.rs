@@ -2,44 +2,60 @@ use std::fs::File;
 use std::io;
 use std::io::{Seek, SeekFrom};
 
+use crate::{diary, Say};
 use crate::bytes::WriteBytes;
-use crate::diary::SayPos;
-use crate::Say;
+use crate::diary::{Pos, SayPos};
 
 pub struct Writer {
-	pub file: File,
-	pub file_size: usize,
+	file: File,
+	end_size: usize,
 }
 
 impl Writer {
-	pub fn write(&mut self, say: &Say) -> io::Result<SayPos> {
-		let start = self.file_size;
+	pub fn write_bytes(&mut self, value: &impl WriteBytes) -> io::Result<(diary::Pos, usize)> {
+		let start = self.end_size;
 		self.file.seek(SeekFrom::Start(start as u64))?;
-		let say_pos = self.try_write(say, start);
-		match say_pos {
-			Ok(say_pos) => {
-				self.file_size = say_pos.end;
-				Ok(say_pos)
+		let value_pos: diary::Pos = start.into();
+		let value_size = value.write_bytes(&mut self.file);
+		match value_size {
+			Ok(value_size) => {
+				self.end_size = start + value_size;
+				Ok((value_pos, value_size))
 			}
 			Err(e) => {
-				let file_size = start as u64;
-				self.file.set_len(file_size)?;
+				self.file.set_len(start as u64)?;
 				Err(e)
 			}
 		}
 	}
 
-	fn try_write(&mut self, say: &Say, start: usize) -> io::Result<SayPos> {
-		let sayer_start = start;
-		let sayer_size = say.sayer.write_bytes(&mut self.file)?;
-		let subject_start = sayer_start + sayer_size;
-		let subject_size = say.subject.write_bytes(&mut self.file)?;
-		let ship_start = subject_start + subject_size;
-		let ship_size = say.ship.write_bytes(&mut self.file)?;
-		let said_start = ship_start + ship_size;
-		let said_size = say.said.write_bytes(&mut self.file)?;
-		let end = said_start + said_size;
+	pub fn write(&mut self, say: &Say) -> io::Result<SayPos> {
+		let start = self.end_size;
+		match self.try_write(say) {
+			Ok(pos) => Ok(pos),
+			Err(e) => {
+				self.file.set_len(start as u64)?;
+				Err(e)
+			}
+		}
+	}
+
+	fn try_write(&mut self, say: &Say) -> io::Result<SayPos> {
+		let start = self.end_size;
+		let (sayer_start, sayer_size) = self.write_bytes(&say.sayer)?;
+		let (subject_start, subject_size) = self.write_bytes(&say.subject)?;
+		let (ship_start, ship_size) = self.write_bytes(&say.ship)?;
+		let (said_start, said_size) = self.write_bytes(&say.said)?;
+		let end = Pos::at(start + sayer_size + subject_size + ship_size + said_size);
 		let say_pos = SayPos { sayer_start, subject_start, ship_start, said_start, end };
 		Ok(say_pos)
+	}
+
+	pub fn end_size(&self) -> usize {
+		self.end_size
+	}
+
+	pub fn new(file: File, file_len: usize) -> Writer {
+		Writer { file, end_size: file_len }
 	}
 }

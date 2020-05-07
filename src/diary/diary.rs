@@ -18,15 +18,15 @@ impl Diary {
 	}
 
 	pub fn commit(&self, writer: &Writer) {
-		let file_size = writer.file_size;
-		self.file_size.set(file_size);
+		let end_size = writer.end_size();
+		self.file_size.set(end_size);
 	}
 
 	pub fn writer(&self) -> io::Result<Writer> {
 		let file = OpenOptions::new().append(true).create(true).open(&self.file_path)?;
 		let file_size = self.file_size.get();
 		file.set_len(file_size as u64)?;
-		Ok(Writer { file, file_size })
+		Ok(Writer::new(file, file_size))
 	}
 
 	pub fn temp() -> io::Result<Diary> {
