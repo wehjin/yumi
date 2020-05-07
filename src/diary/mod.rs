@@ -2,6 +2,7 @@ use std::fs::OpenOptions;
 use std::io;
 use std::path::{Path, PathBuf};
 
+pub use self::reader::*;
 pub use self::writer::*;
 
 #[cfg(test)]
@@ -11,17 +12,56 @@ mod tests {
 
 	#[test]
 	fn main() {
-		let mut diary = Diary::temp().unwrap();
-		let mut writer = diary.writer().unwrap();
-		let say = Say { sayer: Sayer::Unit, subject: Subject::Unit, ship: Ship::Unit, said: Some(Said::Number(3)) };
-		let starts = writer.write(&say).unwrap();
-		assert_eq!(starts, SayPos { sayer_start: 0, subject_start: 1, ship_start: 2, said_start: 3, end: 4 + 8 });
-		diary.commit(&writer);
-		assert_eq!(diary.len_in_bytes(), 12)
+		let start_say = Say { sayer: Sayer::Unit, subject: Subject::Unit, ship: Ship::Unit, said: Some(Said::Number(3)) };
+		let (path, pos) = {
+			let mut diary = Diary::temp().unwrap();
+			let mut writer = diary.writer().unwrap();
+			let pos = writer.write(&start_say).unwrap();
+			assert_eq!(pos, SayPos { sayer_start: 0, subject_start: 1, ship_start: 2, said_start: 3, end: 4 + 8 });
+			diary.commit(&writer);
+			assert_eq!(diary.len_in_bytes(), 12);
+			let mut commit_reader = diary.reader().unwrap();
+			let commit_say = commit_reader.read(&pos).unwrap();
+			assert_eq!(commit_say, start_say);
+			(diary.file_path.to_owned(), pos)
+		};
+		let reload_diary = Diary::load(&path).unwrap();
+		let mut reload_reader = reload_diary.reader().unwrap();
+		let reload_say = reload_reader.read(&pos).unwrap();
+		assert_eq!(reload_say, start_say);
 	}
 }
 
 mod writer;
+
+mod reader {
+	use std::fs::File;
+	use std::io;
+	use std::io::{Seek, SeekFrom};
+
+	use crate::{Say, Ship, Subject};
+	use crate::bytes::ReadBytes;
+	use crate::diary::SayPos;
+	use crate::Sayer;
+
+	pub struct Reader {
+		pub file: File,
+		pub file_size: usize,
+	}
+
+	impl Reader {
+		pub fn read(&mut self, pos: &SayPos) -> io::Result<Say> {
+			let start = pos.sayer_start;
+			self.file.seek(SeekFrom::Start(start as u64))?;
+			let sayer = Sayer::read_bytes(&mut self.file)?;
+			let subject = Subject::read_bytes(&mut self.file)?;
+			let ship = Ship::read_bytes(&mut self.file)?;
+			let said = Option::read_bytes(&mut self.file)?;
+			let say = Say { sayer, subject, ship, said };
+			Ok(say)
+		}
+	}
+}
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct SayPos {
@@ -38,6 +78,12 @@ pub struct Diary {
 }
 
 impl Diary {
+	pub fn reader(&self) -> io::Result<Reader> {
+		let file = OpenOptions::new().read(true).open(&self.file_path)?;
+		let file_size = self.file_size;
+		Ok(Reader { file, file_size })
+	}
+
 	pub fn commit(&mut self, writer: &Writer) {
 		self.file_size = writer.file_size;
 	}

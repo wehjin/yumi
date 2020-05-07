@@ -30,7 +30,7 @@ pub enum Subject {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Ship {
 	Unit,
-	Static(&'static str, &'static str),
+	FieldGroup(String, String),
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]

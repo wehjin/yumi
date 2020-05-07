@@ -13,7 +13,7 @@ mod hamt;
 mod mem_file;
 mod util;
 pub mod diary;
-pub mod write_bytes;
+pub mod bytes;
 
 #[cfg(test)]
 mod tests {
@@ -25,7 +25,7 @@ mod tests {
 	fn main() -> Result<(), Box<dyn Error>> {
 		let sayer = Sayer::Named("Bob".into());
 		let subject = Subject::Sayer(sayer.clone());
-		let ship = Ship::Static("counter", "Count");
+		let ship = Ship::FieldGroup("counter".into(), "Count".into());
 		let chamber = Echo::connect().latest()?;
 		let new_chamber = chamber.origin()
 			.batch_write(|ctx| {

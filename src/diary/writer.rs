@@ -2,9 +2,9 @@ use std::fs::File;
 use std::io;
 use std::io::{Seek, SeekFrom};
 
+use crate::bytes::WriteBytes;
 use crate::diary::SayPos;
 use crate::Say;
-use crate::write_bytes::WriteBytes;
 
 pub struct Writer {
 	pub file: File,
