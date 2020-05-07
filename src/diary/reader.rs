@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io;
 use std::io::{Seek, SeekFrom};
 
-use crate::{diary, Say, Ship, Subject};
+use crate::{diary, Said, Say, Ship, Subject};
 use crate::bytes::ReadBytes;
 use crate::Sayer;
 
@@ -12,13 +12,17 @@ pub struct Reader {
 }
 
 impl Reader {
-	pub fn read(&mut self, sayer_start: diary::Pos) -> io::Result<Say> {
-		self.file.seek(SeekFrom::Start(sayer_start.into()))?;
-		let sayer = Sayer::read_bytes(&mut self.file)?;
-		let subject = Subject::read_bytes(&mut self.file)?;
-		let ship = Ship::read_bytes(&mut self.file)?;
-		let said = Option::read_bytes(&mut self.file)?;
+	pub fn read_say(&mut self, pos: diary::SayPos) -> io::Result<Say> {
+		let sayer = self.read::<Sayer>(pos.sayer)?;
+		let subject = self.read::<Subject>(pos.subject)?;
+		let ship = self.read::<Ship>(pos.ship)?;
+		let said = self.read::<Option<Said>>(pos.said)?;
 		let say = Say { sayer, subject, ship, said };
 		Ok(say)
+	}
+
+	pub fn read<V: ReadBytes<V>>(&mut self, pos: diary::Pos) -> io::Result<V> {
+		self.file.seek(SeekFrom::Start(pos.into()))?;
+		V::read_bytes(&mut self.file)
 	}
 }

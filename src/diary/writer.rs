@@ -12,7 +12,7 @@ pub struct Writer {
 }
 
 impl Writer {
-	pub fn write_bytes(&mut self, value: &impl WriteBytes) -> io::Result<(diary::Pos, usize)> {
+	pub fn write(&mut self, value: &impl WriteBytes) -> io::Result<(diary::Pos, usize)> {
 		let start = self.end_size;
 		self.file.seek(SeekFrom::Start(start as u64))?;
 		let value_pos: diary::Pos = start.into();
@@ -29,7 +29,7 @@ impl Writer {
 		}
 	}
 
-	pub fn write(&mut self, say: &Say) -> io::Result<SayPos> {
+	pub fn write_say(&mut self, say: &Say) -> io::Result<SayPos> {
 		let start = self.end_size;
 		match self.try_write(say) {
 			Ok(pos) => Ok(pos),
@@ -42,12 +42,12 @@ impl Writer {
 
 	fn try_write(&mut self, say: &Say) -> io::Result<SayPos> {
 		let start = self.end_size;
-		let (sayer_start, sayer_size) = self.write_bytes(&say.sayer)?;
-		let (subject_start, subject_size) = self.write_bytes(&say.subject)?;
-		let (ship_start, ship_size) = self.write_bytes(&say.ship)?;
-		let (said_start, said_size) = self.write_bytes(&say.said)?;
+		let (sayer_start, sayer_size) = self.write(&say.sayer)?;
+		let (subject_start, subject_size) = self.write(&say.subject)?;
+		let (ship_start, ship_size) = self.write(&say.ship)?;
+		let (said_start, said_size) = self.write(&say.said)?;
 		let end = Pos::at(start + sayer_size + subject_size + ship_size + said_size);
-		let say_pos = SayPos { sayer_start, subject_start, ship_start, said_start, end };
+		let say_pos = SayPos { sayer: sayer_start, subject: subject_start, ship: ship_start, said: said_start, end };
 		Ok(say_pos)
 	}
 
