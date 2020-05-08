@@ -52,7 +52,7 @@ impl Hamt where {
 		Hamt {
 			value_diary: values_diary,
 			mem_file: MemFile::new(),
-			root: Root::new(),
+			root: Root::ZERO,
 		}
 	}
 }
@@ -75,8 +75,7 @@ pub struct Extender {
 impl Extender {
 	pub fn extend<V: WriteBytes>(mut self, key: &impl Key, value: &V) -> io::Result<Self> {
 		let (value_pos, _value_size) = self.value_diary.write(value)?;
-		let Root::PosMask(root_pos, root_mask) = self.root;
-		let mut writer = Writer::new(Arc::new(self.mem_file.clone()), root_pos as usize, root_mask);
+		let mut writer = Writer::new(Arc::new(self.mem_file.clone()), self.root);
 		let mut write_context = UniversalWriteScope {};
 		let key = key.universal(1);
 		writer.write(key, value_pos.into(), &mut write_context)?;
@@ -98,8 +97,7 @@ pub struct Viewer<V: ReadBytes<V>> {
 impl<V: ReadBytes<V>> Viewer<V> {
 	pub fn value(&mut self, key: &impl Key) -> &Option<V> {
 		let key = key.universal(1);
-		let Root::PosMask(root_pos, root_mask) = self.root;
-		let reader = Reader::new(Arc::new(self.mem_file.clone()), root_pos as usize, root_mask).unwrap();
+		let reader = Reader::new(Arc::new(self.mem_file.clone()), self.root).unwrap();
 		let mut indexer = UniversalSlotPicker::new(key);
 		let u32_pos = reader.read(&mut indexer).unwrap();
 		let value = match u32_pos {

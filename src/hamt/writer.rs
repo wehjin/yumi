@@ -16,6 +16,7 @@ mod tests {
 	use std::sync::Arc;
 
 	use crate::hamt::data::{fixture::ZeroThenKeySlotIndexer};
+	use crate::hamt::Root;
 	use crate::hamt::slot_indexer::SlotIndexer;
 	use crate::hamt::writer::{WriteContext, Writer};
 	use crate::mem_file::MemFile;
@@ -33,7 +34,7 @@ mod tests {
 	fn double_write_double_level_collision_changes_read() {
 		let mut scope = WriteScope { transition_depth: 2 };
 		let cursor = Arc::new(MemFile::new());
-		let mut writer = Writer::new(cursor, 0, 0);
+		let mut writer = Writer::new(cursor, Root::ZERO);
 		// First places value in empty slot of root-frame.
 		writer.write(1, 10, &mut scope).unwrap();
 		// Second finds occupied slot. Create 2 sub-frames before finding collision-free hash.
@@ -49,7 +50,7 @@ mod tests {
 	fn triple_write_single_slot_changes_read() {
 		let mut scope = WriteScope { transition_depth: 1 };
 		let cursor = Arc::new(MemFile::new());
-		let mut writer = Writer::new(cursor, 0, 0);
+		let mut writer = Writer::new(cursor, Root::ZERO);
 		// First places value in empty slot of root-frame.
 		writer.write(1, 10, &mut scope).unwrap();
 		{
@@ -82,7 +83,7 @@ mod tests {
 		let key = 0x00000001;
 
 		let cursor = Arc::new(MemFile::new());
-		let mut writer = Writer::new(cursor, 0, 0);
+		let mut writer = Writer::new(cursor, Root::ZERO);
 		writer.write(0x00000001, 17, &mut scope).unwrap();
 
 		let reader = writer.reader().unwrap();
@@ -93,18 +94,12 @@ mod tests {
 
 pub(crate) struct Writer {
 	dest: Arc<dyn EntryFile>,
-	root_pos: usize,
-	root_mask: u32,
+	root: Root,
 }
 
 impl Writer {
 	pub fn reader(&self) -> Result<Reader, Box<dyn Error>> {
-		let dest = self.dest.clone();
-		let len = dest.len();
-		let (source, pos) = (dest, len?);
-		let root_pos = self.root_pos;
-		assert_eq!(root_pos, pos);
-		Reader::new(source, root_pos, self.root_mask)
+		Reader::new(self.dest.clone(), self.root)
 	}
 
 	pub fn write(&mut self, key: u32, value: u32, ctx: &mut impl WriteContext) -> io::Result<()> {
@@ -113,18 +108,17 @@ impl Writer {
 			io::Error::new(ErrorKind::Other, e.to_string())
 		})?;
 		let mut indexer = ctx.slot_indexer(key);
-		let (mask, pos) = self.write_indexer(&mut indexer, 0, reader.root_pos, reader.root_mask, value, &mut reader).map_err(|e| {
+		let root = self.write_indexer(&mut indexer, 0, reader.root, value, &mut reader).map_err(|e| {
 			io::Error::new(ErrorKind::Other, e.to_string())
 		})?;
-		self.root_pos = pos;
-		self.root_mask = mask;
+		self.root = root;
 		Ok(())
 	}
 
-	fn write_indexer(&mut self, indexer: &mut impl SlotIndexer, depth: usize, pos: usize, mask: u32, value: u32, reader: &mut Reader) -> io::Result<(u32, usize)> {
+	fn write_indexer(&mut self, indexer: &mut impl SlotIndexer, depth: usize, root: Root, value: u32, reader: &mut Reader) -> io::Result<Root> {
 		let key = indexer.key();
 		let index = indexer.slot_index(depth);
-		let frame = reader.read_frame(pos, mask).map_err(io_error_of_box)?;
+		let frame = reader.read_frame(root).map_err(io_error_of_box)?;
 		match &frame.slots[index as usize] {
 			Slot::KeyValue(conflict_key, conflict_value) => {
 				if *conflict_key == key {
@@ -140,30 +134,30 @@ impl Writer {
 						let sub_frame = Frame::empty()
 							.with_value_slot(conflict_index, *conflict_key, *conflict_value)
 							.with_value_slot(next_index, key, value);
-						let (sub_mask, sub_pos) = sub_frame.write(&mut self.dest)?;
-						let sub_pos = self.require_empty_high_bit(sub_pos as u32)?;
-						let (parent_mask, parent_pos) = frame.with_ref_slot(index, sub_pos, sub_mask).write(&mut self.dest)?;
-						Ok((parent_mask, parent_pos))
+						let sub_root: Root = sub_frame.write(&mut self.dest)?;
+						let sub_root = self.require_31_bit_position(sub_root)?;
+						let parent_root = frame.with_ref_slot(index, sub_root).write(&mut self.dest)?;
+						Ok(parent_root)
 					}
 				}
 			}
 			Slot::Root(root) => {
-				match root {
-					Root::PosMask(ref_pos, ref_mask) => {
-						let (sub_mask, sub_pos) = self.write_indexer(indexer, depth + 1, *ref_pos as usize, *ref_mask, value, reader)?;
-						let sub_pos = self.require_empty_high_bit(sub_pos as u32)?;
-						let parent_frame = frame.with_ref_slot(index, sub_pos, sub_mask);
-						let (parent_mask, parent_pos) = parent_frame.write(&mut self.dest)?;
-						Ok((parent_mask, parent_pos))
-					}
-				}
+				let sub_root: Root = self.write_indexer(indexer, depth + 1, *root, value, reader)?;
+				let sub_root = self.require_31_bit_position(sub_root)?;
+				let parent_frame = frame.with_ref_slot(index, sub_root);
+				let parent_root = parent_frame.write(&mut self.dest)?;
+				Ok(parent_root)
 			}
 			Slot::Empty => {
 				let frame = frame.with_value_slot(index, key, value);
-				let (mask, pos) = frame.write(&self.dest)?;
-				Ok((mask, pos))
+				let root = frame.write(&self.dest)?;
+				Ok(root)
 			}
 		}
+	}
+
+	fn require_31_bit_position(&self, root: Root) -> io::Result<Root> {
+		self.require_empty_high_bit(root.pos).map(|_| root)
 	}
 
 	fn require_empty_high_bit(&self, n: u32) -> io::Result<u32> {
@@ -173,12 +167,8 @@ impl Writer {
 			Ok(n)
 		}
 	}
-
-	pub fn root(&self) -> Root { Root::PosMask(self.root_pos as u32, self.root_mask) }
-
-	pub fn new(dest: Arc<dyn EntryFile>, root_pos: usize, root_mask: u32) -> Self {
-		Writer { dest: dest.clone(), root_pos, root_mask }
-	}
+	pub fn root(&self) -> Root { self.root }
+	pub fn new(dest: Arc<dyn EntryFile>, root: Root) -> Self { Writer { dest: dest.clone(), root } }
 }
 
 pub(crate) trait WriteContext {

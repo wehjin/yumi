@@ -22,7 +22,7 @@ impl Slot {
 		let slot = if flag {
 			Slot::KeyValue(a, b)
 		} else {
-			Slot::Root(Root::PosMask(a, b))
+			Slot::Root(Root { pos: a, mask: b })
 		};
 		Ok(slot)
 	}
@@ -38,15 +38,11 @@ impl Slot {
 				Ok((bytes, Some(pos)))
 			}
 			Slot::Root(root) => {
-				match root {
-					Root::PosMask(pos, mask) => {
-						let a = *pos;
-						let b = *mask;
-						let (bytes, end_pos) = dest.write_entry(Entry { flag: false, a, b })
-							.map_err(|it| io::Error::new(ErrorKind::Other, format!("Root: {}", it.to_string())))?;
-						Ok((bytes, Some(end_pos)))
-					}
-				}
+				let a = root.pos;
+				let b = root.mask;
+				let (bytes, end_pos) = dest.write_entry(Entry { flag: false, a, b })
+					.map_err(|it| io::Error::new(ErrorKind::Other, format!("Root: {}", it.to_string())))?;
+				Ok((bytes, Some(end_pos)))
 			}
 		}
 	}

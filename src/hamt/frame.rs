@@ -16,12 +16,12 @@ mod tests {
 		let frame = Frame::empty().with_value_slot(0, 1, 7);
 
 		let dest = MemFile::new();
-		let (mask, pos) = frame.write(&dest).unwrap();
+		let post_write_root = frame.write(&dest).unwrap();
+		assert_eq!(post_write_root.pos, 8, "pos");
+		assert_eq!(post_write_root.mask, 1 << 31, "mask");
 		assert_eq!(dest.len().unwrap(), 8, "destination position");
-		assert_eq!(pos, 8, "pos");
-		assert_eq!(mask, 1 << 31, "mask");
-		let (source, pos) = (dest.clone(), dest.len().unwrap());
-		let read = Frame::read(&source, pos as usize, mask).unwrap();
+		let source = dest.clone();
+		let read = Frame::read(&source, post_write_root).unwrap();
 		assert_eq!(read, frame);
 	}
 }
@@ -38,9 +38,9 @@ impl Frame {
 		Frame { slots }
 	}
 
-	pub fn with_ref_slot(&self, index: u8, pos: u32, mask: u32) -> Self {
+	pub fn with_ref_slot(&self, index: u8, root: Root) -> Self {
 		let mut slots = self.slots.to_owned();
-		slots[index as usize] = Slot::Root(Root::PosMask(pos, mask));
+		slots[index as usize] = Slot::Root(root);
 		Frame { slots }
 	}
 
@@ -58,43 +58,37 @@ impl Frame {
 				}
 			}
 			Slot::Root(root) => {
-				match root {
-					Root::PosMask(pos, mask) => {
-						// TODO Get the value directly instead of building a frame to get the value.
-						let mask_val = *mask;
-						let pos_val = *pos;
-						let frame = Frame::read(source, pos_val as usize, mask_val)?;
-						let value = frame.read_indexer(indexer, depth + 1, source)?;
-						value
-					}
-				}
+				// TODO Get the value directly instead of building a frame to get the value.
+				let frame = Frame::read(source, *root)?;
+				let value = frame.read_indexer(indexer, depth + 1, source)?;
+				value
 			}
 		};
 		Ok(value)
 	}
 
-	pub fn read(source: &impl EntryFile, pos: usize, mask: u32) -> Result<Frame, Box<dyn Error>> {
+	pub fn read(source: &impl EntryFile, root: Root) -> Result<Frame, Box<dyn Error>> {
 		let mut frame = Frame::empty();
-		let mut next_seek = pos as i64 - 8;
-		let mut mask = mask;
-		let mut index: i8 = 31;
-		while index >= 0 {
-			let slot_present = mask & 1 == 1;
+		let mut next_seek = root.pos as i64 - 8;
+		let mut travelling_mask = root.mask;
+		let mut travelling_index: i8 = 31;
+		while travelling_index >= 0 {
+			let slot_present = travelling_mask & 1 == 1;
 			if slot_present {
 				source.seek(next_seek as usize)?;
-				frame.slots[index as usize] = Slot::read(source)?;
+				frame.slots[travelling_index as usize] = Slot::read(source)?;
 				next_seek -= 8;
 			}
-			mask >>= 1;
-			index -= 1;
+			travelling_mask >>= 1;
+			travelling_index -= 1;
 		}
 		Ok(frame)
 	}
 
-	pub fn write(&self, dest: &impl EntryFile) -> io::Result<(u32, usize)> {
+	pub fn write(&self, dest: &impl EntryFile) -> io::Result<Root> {
 		let (mask, _) = self.write_slots(dest)?;
 		let len = dest.len()?;
-		Ok((mask, len))
+		Ok(Root { pos: len as u32, mask })
 	}
 
 	fn write_slots(&self, dest: &impl EntryFile) -> io::Result<(u32, usize)> {

@@ -54,8 +54,7 @@ impl Echo {
 		let echo = Echo { tx };
 		let thread_echo = echo.clone();
 		thread::spawn(move || {
-			let said_diary = Diary::temp().unwrap();
-			let mut hamt = Hamt::new(said_diary);
+			let mut hamt = Hamt::new(Diary::temp().unwrap());
 			for action in rx {
 				match action {
 					Action::Speech(speech, tx) => {
