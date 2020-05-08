@@ -54,9 +54,6 @@ pub(crate) struct Reader<'a> {
 }
 
 impl<'a> Reader<'a> {
-	pub fn unseek(&mut self) {
-		self.value = None;
-	}
 	pub fn seek(&mut self, pos: diary::Pos) -> io::Result<diary::Pos> {
 		let value = self.diary_reader.read(pos)?;
 		self.value = Some(value);

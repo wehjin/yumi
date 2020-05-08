@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io;
 
 use crate::diary;
-use crate::hamt::{Root, slot};
+use crate::hamt::{frame, Root, slot};
 use crate::hamt::frame::SlotIndex;
 use crate::hamt::slot::Slot;
 
@@ -17,41 +17,48 @@ mod tests {
 	use crate::hamt::frame::SlotIndex;
 	use crate::hamt::slot::Slot;
 
-// TODO Write multiple slots with optional prototype.
+	#[test]
+	fn revised_root() -> Result<(), Box<dyn Error>> {
+		let slot_a = Slot::KeyValue(7, 70);
+		let slot_b = Slot::KeyValue(7, 71);
+		let slot_index = SlotIndex::at(7);
+		let (path, root) = {
+			let diary = Diary::temp()?;
+			let mut diary_writer = diary.writer()?;
+			let mut writer = frame::Writer::new(&mut diary_writer);
+			// Write slot.
+			let mut first_diary_reader = diary.reader()?;
+			let mut first_reader = frame::Reader::new(Root::ZERO, &mut first_diary_reader)?;
+			let first_root = writer.write_revised_root(WriteSlot { slot: slot_a, slot_index }, &mut first_reader)?;
+			// Rewrite the slot.
+			let mut second_diary_reader = diary.reader()?;
+			let mut second_reader = frame::Reader::new(first_root, &mut second_diary_reader)?;
+			let second_root = writer.write_revised_root(WriteSlot { slot: slot_b, slot_index }, &mut second_reader)?;
+			(diary.file_path, second_root)
+		};
+		let mut slots = [Slot::Empty; 32];
+		slots[slot_index.as_usize()] = slot_b;
+		assert_slots(&path, root, &slots)
+	}
 
 	#[test]
-	fn sub_root_with_two_slots() -> Result<(), Box<dyn Error>> {
+	fn sub_root() -> Result<(), Box<dyn Error>> {
 		let write_slot1 = WriteSlot { slot: Slot::KeyValue(1, 10), slot_index: SlotIndex::at(1) };
 		let write_slot7 = WriteSlot { slot: Slot::KeyValue(7, 70), slot_index: SlotIndex::at(7) };
 		let (path, root) = {
 			let diary = Diary::temp()?;
 			let mut diary_writer = diary.writer()?;
 			let mut writer = frame::Writer::new(&mut diary_writer);
-			let root = writer.write_root_with_slots(write_slot1, write_slot7)?;
+			let root = writer.write_sub_root(write_slot1, write_slot7)?;
 			(diary.file_path, root)
 		};
-		let mut slots = [None; 32];
-		slots[write_slot1.slot_index.as_usize()] = Some(write_slot1.slot);
-		slots[write_slot7.slot_index.as_usize()] = Some(write_slot7.slot);
+		let mut slots = [Slot::Empty; 32];
+		slots[write_slot1.slot_index.as_usize()] = write_slot1.slot;
+		slots[write_slot7.slot_index.as_usize()] = write_slot7.slot;
 		assert_slots(&path, root, &slots)
 	}
 
-	#[test]
-	fn sub_root_with_one_slot() -> Result<(), Box<dyn Error>> {
-		let write_slot = WriteSlot { slot: Slot::KeyValue(3, 30), slot_index: SlotIndex::at(3) };
-		let (path, root) = {
-			let diary = Diary::temp()?;
-			let mut diary_writer = diary.writer()?;
-			let mut writer = frame::Writer::new(&mut diary_writer);
-			let root = writer.write_root_with_slot(write_slot)?;
-			(diary.file_path, root)
-		};
-		let mut slots = [None; 32];
-		slots[write_slot.slot_index.as_usize()] = Some(write_slot.slot);
-		assert_slots(&path, root, &slots)
-	}
-
-	fn assert_slots(path: &Path, root: Root, slots: &[Option<Slot>; 32]) -> Result<(), Box<dyn Error>> {
+	fn assert_slots(path: &Path, root: Root, slots: &[Slot; 32]) -> Result<(), Box<dyn Error>> {
 		let diary = Diary::load(&path)?;
 		let mut diary_reader = diary.reader()?;
 		let mut reader = frame::Reader::new(root, &mut diary_reader)?;
@@ -70,7 +77,7 @@ mod tests {
 		let mut diary_reader = diary.reader()?;
 		let reader = frame::Reader::new(Root::ZERO, &mut diary_reader)?;
 		let reading = reader.read().unwrap();
-		assert_eq!(reading, &None);
+		assert_eq!(reading, &Slot::Empty);
 		Ok(())
 	}
 }
@@ -80,7 +87,29 @@ pub(crate) struct Writer<'a> {
 }
 
 impl<'a> Writer<'a> {
-	pub fn write_root_with_slots(&mut self, write_slot_a: WriteSlot, write_slot_b: WriteSlot) -> io::Result<Root> {
+	pub fn write_revised_root(&mut self, write_slot: WriteSlot, reader: &mut frame::Reader) -> io::Result<Root> {
+		let mut first_pos: Option<diary::Pos> = None;
+		let mut mask = 0u32;
+		for n in SlotIndex::RANGE {
+			let slot_index = SlotIndex::at(n);
+			let slot = if write_slot.slot_index == slot_index {
+				&write_slot.slot
+			} else {
+				reader.seek(slot_index)?;
+				reader.read()?
+			};
+			if slot != &Slot::Empty {
+				let (pos, _size) = self.slot_writer.write(slot)?;
+				mask |= slot_index.as_mask();
+				if first_pos.is_none() {
+					first_pos = Some(pos)
+				}
+			}
+		}
+		let pos = first_pos.expect("No pos for first written slot");
+		Ok(Root { pos: pos.u32(), mask })
+	}
+	pub fn write_sub_root(&mut self, write_slot_a: WriteSlot, write_slot_b: WriteSlot) -> io::Result<Root> {
 		debug_assert_ne!(write_slot_a.slot_index, write_slot_b.slot_index);
 		let (first_write, second_write) = if write_slot_a.slot_index < write_slot_b.slot_index {
 			(write_slot_a, write_slot_b)
@@ -91,11 +120,6 @@ impl<'a> Writer<'a> {
 		self.slot_writer.write(&second_write.slot)?;
 		let root_mask = first_write.slot_index.as_mask() | second_write.slot_index.as_mask();
 		Ok(Root { pos: pos.u32(), mask: root_mask })
-	}
-
-	pub fn write_root_with_slot(&mut self, write_slot: WriteSlot) -> io::Result<Root> {
-		let (pos, _size) = self.slot_writer.write(&write_slot.slot)?;
-		Ok(Root { pos: pos.u32(), mask: write_slot.slot_index.as_mask() })
 	}
 	pub fn new(diary_writer: &'a mut diary::Writer) -> Self { Writer { slot_writer: slot::Writer::new(diary_writer) } }
 }
@@ -109,22 +133,27 @@ pub(crate) struct WriteSlot {
 pub(crate) struct Reader<'a> {
 	root: Root,
 	slot_reader: slot::Reader<'a>,
+	slot: Slot,
 }
 
 impl<'a> Reader<'a> {
 	pub fn seek(&mut self, slot_index: SlotIndex) -> io::Result<()> {
-		let slot_diary_pos = self.root.slot_diary_pos(slot_index);
-		if let Some(pos) = slot_diary_pos {
+		let pos = self.root.slot_diary_pos(slot_index);
+		self.slot = if let Some(pos) = pos {
 			self.slot_reader.seek(pos)?;
+			match self.slot_reader.read()? {
+				None => Slot::Empty,
+				Some(slot) => *slot,
+			}
 		} else {
-			self.slot_reader.unseek();
-		}
+			Slot::Empty
+		};
 		Ok(())
 	}
-	pub fn read(&self) -> io::Result<&Option<Slot>> { self.slot_reader.read() }
+	pub fn read(&self) -> io::Result<&Slot> { Ok(&self.slot) }
 	pub fn new(root: Root, diary_reader: &'a mut diary::Reader) -> io::Result<Self> {
 		let slot_reader = slot::Reader::new(diary_reader);
-		Ok(Reader { root, slot_reader })
+		Ok(Reader { root, slot_reader, slot: Slot::Empty })
 	}
 }
 
