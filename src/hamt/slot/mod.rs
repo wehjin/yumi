@@ -5,6 +5,10 @@ use std::io::ErrorKind;
 use crate::hamt::root::Root;
 use crate::mem_file::{Entry, EntryFile};
 
+pub use self::read_write::{Reader, Writer};
+
+pub mod read_write;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum Slot {
 	Empty,

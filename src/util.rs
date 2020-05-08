@@ -4,6 +4,16 @@ use std::io::ErrorKind;
 use std::string::FromUtf8Error;
 use std::sync::mpsc::RecvError;
 
+pub(crate) fn set_high_bit(n: u32) -> u32 {
+	n | 0x80000000
+}
+
+pub(crate) fn clr_high_bit(n: u32) -> u32 {
+	n & 0x7fffffff
+}
+
+pub(crate) fn is_high_bit_set(n: u32) -> bool { n & 0x80000000 != 0 }
+
 pub(crate) fn big_end_first_2(n: u16, buf: &mut [u8; 2]) {
 	buf[0] = (n >> 8) as u8;
 	buf[1] = (n >> 0) as u8;
@@ -46,7 +56,9 @@ pub(crate) fn u64_of_buf(buf: &[u8; 8]) -> u64 {
 }
 
 
-pub(crate) fn u32x2_of_buf(buf: &[u8; 8]) -> (u32, u32) {
+pub(crate) type U32x2 = (u32, u32);
+
+pub(crate) fn u32x2_of_buf(buf: &[u8; 8]) -> U32x2 {
 	(
 		[
 			(buf[0] as u32) << 24,
