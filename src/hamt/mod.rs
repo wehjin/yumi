@@ -13,8 +13,9 @@ use crate::hamt::slot_indexer::{SlotIndexer, UniversalSlotPicker};
 use crate::hamt::writer::{WriteContext, Writer};
 use crate::mem_file::MemFile;
 
+pub(crate) mod frame;
+
 mod data;
-mod frame;
 mod hasher;
 mod slot;
 mod reader;

@@ -6,6 +6,12 @@ use crate::hamt::slot::Slot;
 use crate::hamt::slot_indexer::SlotIndexer;
 use crate::mem_file::EntryFile;
 
+pub(crate) use self::read_write::{Reader, Writer};
+pub(crate) use self::slot_index::SlotIndex;
+
+mod read_write;
+mod slot_index;
+
 #[cfg(test)]
 mod tests {
 	use crate::hamt::frame::Frame;

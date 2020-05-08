@@ -5,11 +5,11 @@ use std::io::ErrorKind;
 use crate::hamt::root::Root;
 use crate::mem_file::{Entry, EntryFile};
 
-pub use self::read_write::{Reader, Writer};
+pub(crate) use self::read_write::{Reader, SLOT_LEN, Writer};
 
 pub mod read_write;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub(crate) enum Slot {
 	Empty,
 	KeyValue(u32, u32),

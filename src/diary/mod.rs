@@ -41,6 +41,7 @@ pub struct Pos { start: usize }
 
 impl Pos {
 	pub fn at(start: usize) -> Self { Pos { start } }
+	pub fn u32(&self) -> u32 { self.start as u32 }
 }
 
 impl fmt::Display for Pos {

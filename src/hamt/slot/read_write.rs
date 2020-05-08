@@ -42,24 +42,28 @@ mod tests {
 		let diary = Diary::load(&file_path).unwrap();
 		let mut diary_reader = diary.reader().unwrap();
 		let mut reader = slot::Reader::new(&mut diary_reader);
-		let reading: &Option<Slot> = reader.read(pos).unwrap();
+		reader.seek(pos).unwrap();
+		let reading = reader.read().unwrap();
 		assert_eq!(reading, &Some(slot))
 	}
 }
 
-pub struct Reader<'a, V: ReadBytes<V>> {
+pub(crate) struct Reader<'a> {
 	diary_reader: &'a mut diary::Reader,
-	value: Option<V>,
+	value: Option<Slot>,
 }
 
-impl<'a, V: ReadBytes<V>> Reader<'a, V> {
-	fn read(&mut self, pos: diary::Pos) -> io::Result<&Option<V>> {
+impl<'a> Reader<'a> {
+	pub fn unseek(&mut self) {
+		self.value = None;
+	}
+	pub fn seek(&mut self, pos: diary::Pos) -> io::Result<diary::Pos> {
 		let value = self.diary_reader.read(pos)?;
 		self.value = Some(value);
-		Ok(&self.value)
+		Ok(pos)
 	}
-
-	fn new(diary_reader: &'a mut diary::Reader) -> Self {
+	pub fn read(&self) -> io::Result<&Option<Slot>> { Ok(&self.value) }
+	pub fn new(diary_reader: &'a mut diary::Reader) -> Self {
 		Reader { diary_reader, value: None }
 	}
 }
@@ -82,14 +86,15 @@ impl ReadBytes<Slot> for Slot {
 
 type U32x2 = (u32, u32);
 
-pub struct Writer<'a> {
+pub(crate) struct Writer<'a> {
 	diary_writer: &'a mut diary::Writer
 }
 
 impl<'a> Writer<'a> {
-	fn write(&mut self, slot: &Slot) -> io::Result<(diary::Pos, usize)> {
+	pub fn write(&mut self, slot: &Slot) -> io::Result<(diary::Pos, usize)> {
 		self.diary_writer.write(slot)
 	}
+	pub fn new(diary_writer: &'a mut diary::Writer) -> Self { Writer { diary_writer } }
 }
 
 impl WriteBytes for Slot {
@@ -118,5 +123,5 @@ impl WriteBytes for Root {
 	}
 }
 
-static SLOT_LEN: usize = 8;
+pub(crate) static SLOT_LEN: usize = 8;
 
