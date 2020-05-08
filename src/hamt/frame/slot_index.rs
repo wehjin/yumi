@@ -2,6 +2,7 @@
 pub(crate) struct SlotIndex { n: usize }
 
 impl SlotIndex {
+	pub fn as_usize(&self) -> usize { self.n }
 	pub fn as_mask(&self) -> u32 { MASK_TABLE[self.n] }
 
 	pub fn at(n: usize) -> Self {
