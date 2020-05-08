@@ -1,4 +1,4 @@
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub(crate) struct SlotIndex { n: usize }
 
 impl SlotIndex {
