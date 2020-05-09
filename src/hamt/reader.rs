@@ -1,8 +1,11 @@
 use std::error::Error;
+use std::io;
 use std::sync::Arc;
 
-use crate::hamt::frame::Frame;
-use crate::hamt::Root;
+use crate::diary;
+use crate::hamt::{frame, Root};
+use crate::hamt::frame::{Frame, SlotIndex};
+use crate::hamt::slot::Slot;
 use crate::hamt::slot_indexer::SlotIndexer;
 use crate::mem_file::EntryFile;
 
@@ -10,32 +13,59 @@ use crate::mem_file::EntryFile;
 mod tests {
 	use std::sync::Arc;
 
+	use crate::diary::Diary;
 	use crate::hamt::data::fixture::ZeroThenKeySlotIndexer;
-	use crate::hamt::reader::Reader;
+	use crate::hamt::reader::{Reader, Reader2};
 	use crate::hamt::Root;
 	use crate::hamt::slot::Slot;
 	use crate::mem_file::MemFile;
 
 	#[test]
 	fn empty_produces_no_value() {
-		let mem_file = MemFile::new();
-		let reader = Reader::new(Arc::new(mem_file), Root::ZERO).unwrap();
-		let keys = [1u32, 2, 3, 4];
-		keys.to_vec().into_iter().for_each(|key| {
-			let mut slot_indexer = ZeroThenKeySlotIndexer { key, transition_depth: 1 };
+		let diary = Diary::temp().unwrap();
+		let mut diary_reader = diary.reader().unwrap();
+		let mut reader = Reader2::new(Root::ZERO, &mut diary_reader);
+		let keys = 1u32..4;
+		for key in 1u32..4 {
+			let mut slot_indexer = ZeroThenKeySlotIndexer { key, transition_depth: 0 };
 			let value = reader.read(&mut slot_indexer).unwrap();
 			assert_eq!(value, None)
-		});
+		}
 	}
+}
 
-	#[test]
-	fn empty_produces_empty_root() {
-		let mem_file = MemFile::new();
-		let reader = Reader::new(Arc::new(mem_file), Root::ZERO).unwrap();
-		let frame = reader.root_frame;
-		frame.slots.iter().for_each(|slot| {
-			assert_eq!(*slot, Slot::Empty)
-		})
+pub(crate) struct Reader2<'a> {
+	root: Root,
+	diary_reader: &'a mut diary::Reader,
+}
+
+impl<'a> Reader2<'a> {
+	pub fn read(&mut self, slot_indexer: &mut impl SlotIndexer) -> io::Result<Option<u32>> {
+		let mut root = self.root;
+		let mut depth = 0;
+		let mut leaf_value: Option<Option<u32>> = None;
+		while leaf_value.is_none() {
+			let slot_index = SlotIndex::at(slot_indexer.slot_index(depth) as usize);
+			let mut frame_reader = frame::Reader::new(root, self.diary_reader)?;
+			frame_reader.seek(slot_index)?;
+			leaf_value = match frame_reader.read()? {
+				Slot::Root(sub_root) => {
+					root = *sub_root;
+					depth += 1;
+					None
+				}
+				Slot::KeyValue(key, value) => if *key == slot_indexer.key() {
+					Some(Some(*value))
+				} else {
+					Some(None)
+				},
+				Slot::Empty => Some(None),
+			}
+		}
+		Ok(leaf_value.unwrap())
+	}
+	pub fn new(root: Root, diary_reader: &'a mut diary::Reader) -> Self {
+		Reader2 { root, diary_reader }
 	}
 }
 
