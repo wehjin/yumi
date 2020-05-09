@@ -18,10 +18,13 @@ use crate::util::io_error_of_box;
 #[cfg(test)]
 mod tests {
 	use std::error::Error;
+	use std::fs::read;
+	use std::io;
 	use std::sync::Arc;
 
 	use crate::diary::Diary;
 	use crate::hamt::data::{fixture::ZeroThenKeySlotIndexer};
+	use crate::hamt::frame::SlotIndex;
 	use crate::hamt::reader::Reader2;
 	use crate::hamt::Root;
 	use crate::hamt::slot_indexer::SlotIndexer;
@@ -38,75 +41,84 @@ mod tests {
 
 	// TODO Convert tests to Writer2.
 
-	#[ignore]
 	#[test]
-	fn double_write_double_level_collision_changes_read() {
-		let mut scope = WriteScope { transition_depth: 2 };
-		let cursor = Arc::new(MemFile::new());
-		let mut writer = Writer::new(cursor, Root::ZERO);
-		// First places value in empty slot of root-frame.
-		writer.write(1, 10, &mut scope).unwrap();
-		// Second finds occupied slot. Create 2 sub-frames before finding collision-free hash.
-		writer.write(2, 20, &mut scope).unwrap();
-
-		let reader = writer.reader().unwrap();
-		let value1 = reader.read(&mut scope.slot_indexer(1)).unwrap();
-		let value2 = reader.read(&mut scope.slot_indexer(2)).unwrap();
+	fn double_write_multiple_collision_changes_read() -> Result<(), Box<dyn Error>> {
+		let diary = Diary::temp()?;
+		let mut slot_indexer1 = ZeroThenKeySlotIndexer { key: 1, transition_depth: 3 };
+		let mut slot_indexer2 = ZeroThenKeySlotIndexer { key: 2, transition_depth: 3 };
+		let mut root = Root::ZERO;
+		// First write places value in empty slot of root-frame.
+		root = write_tmp(&diary, root, &mut slot_indexer1, 10)?;
+		// Second write finds sub-frame in slot. But next 2 levels are collisions and creates 2 sub-frames before finding collision-free hash.
+		root = write_tmp(&diary, root, &mut slot_indexer2, 20)?;
+		let value1 = read_tmp(&diary, root, &mut slot_indexer1)?;
+		let value2 = read_tmp(&diary, root, &mut slot_indexer2)?;
 		assert_eq!((value1, value2), (Some(10), Some(20)));
+		Ok(())
 	}
 
 	#[test]
-	fn triple_write_single_slot_changes_read() {
-		let mut scope = WriteScope { transition_depth: 1 };
-		let cursor = Arc::new(MemFile::new());
-		let mut writer = Writer::new(cursor, Root::ZERO);
-		// First places value in empty slot of root-frame.
-		writer.write(1, 10, &mut scope).unwrap();
-		{
-			let reader = writer.reader().unwrap();
-			let value1 = reader.read(&mut scope.slot_indexer(1)).unwrap();
+	fn triple_write_single_slot_changes_read() -> Result<(), Box<dyn Error>> {
+		let diary = Diary::temp()?;
+		let mut root = Root::ZERO;
+		let mut slot_indexer1 = ZeroThenKeySlotIndexer { key: 1, transition_depth: 1 };
+		let mut slot_indexer2 = ZeroThenKeySlotIndexer { key: 2, transition_depth: 1 };
+		let mut slot_indexer3 = ZeroThenKeySlotIndexer { key: 3, transition_depth: 1 };
+		root = {
+			// First places value in empty slot of root-frame.
+			let new_root = write_tmp(&diary, root, &mut slot_indexer1, 10)?;
+			let value1 = read_tmp(&diary, new_root, &mut slot_indexer1)?;
 			assert_eq!(value1, Some(10));
-		}
-		// Second finds occupied slot. Create sub-frame for first and second values.
-		writer.write(2, 20, &mut scope).unwrap();
-		{
-			let reader = writer.reader().unwrap();
-			let value1 = reader.read(&mut scope.slot_indexer(1)).unwrap();
-			let value2 = reader.read(&mut scope.slot_indexer(2)).unwrap();
+			new_root
+		};
+		root = {
+			// Second finds slot occupied by first value. Create sub-frame for first and second values.
+			let new_root = write_tmp(&diary, root, &mut slot_indexer2, 20)?;
+			let value1 = read_tmp(&diary, new_root, &mut slot_indexer1)?;
+			let value2 = read_tmp(&diary, new_root, &mut slot_indexer2)?;
 			assert_eq!((value1, value2), (Some(10), Some(20)));
-		}
-		// Third finds occupied slot. Places third value in empty slot of sub-frame.
-		writer.write(3, 30, &mut scope).unwrap();
+			new_root
+		};
 		{
-			let reader = writer.reader().unwrap();
-			let value1 = reader.read(&mut scope.slot_indexer(1)).unwrap();
-			let value2 = reader.read(&mut scope.slot_indexer(2)).unwrap();
-			let value3 = reader.read(&mut scope.slot_indexer(3)).unwrap();
+			// Third finds slot occupied by sub-frame. Places third value in empty slot of sub-frame.
+			let new_root = write_tmp(&diary, root, &mut slot_indexer3, 30)?;
+			let value1 = read_tmp(&diary, new_root, &mut slot_indexer1)?;
+			let value2 = read_tmp(&diary, new_root, &mut slot_indexer2)?;
+			let value3 = read_tmp(&diary, new_root, &mut slot_indexer3)?;
 			assert_eq!((value1, value2, value3), (Some(10), Some(20), Some(30)));
-		}
+			new_root
+		};
+		Ok(())
 	}
 
 	#[test]
 	fn single_write_changes_read() -> Result<(), Box<dyn Error>> {
 		let diary = Diary::temp()?;
-		let mut slot_indexer = ZeroThenKeySlotIndexer { key: 0x00000001, transition_depth: 1 };
+		let mut slot_indexer = ZeroThenKeySlotIndexer { key: 1, transition_depth: 1 };
 		let value = 17;
-		let root1 = {
-			let mut diary_writer = diary.writer()?;
-			let mut diary_reader = diary.reader()?;
-			let root1 = {
-				let mut writer = Writer2::new(Root::ZERO, &mut diary_writer, &mut diary_reader);
-				writer.write(value, &mut slot_indexer)?;
-				writer.root
-			};
-			diary.commit(&diary_writer);
-			root1
-		};
-		let mut diary_reader = diary.reader()?;
-		let mut reader = Reader2::new(root1, &mut diary_reader);
-		let reading = reader.read(&mut slot_indexer)?;
-		assert_eq!(reading, Some(value));
+		let root1 = write_tmp(&diary, Root::ZERO, &mut slot_indexer, value)?;
+		let reading1 = read_tmp(&diary, root1, &mut slot_indexer)?;
+		assert_eq!(reading1, Some(value));
 		Ok(())
+	}
+
+	fn read_tmp(diary: &Diary, root: Root, slot_indexer: &mut impl SlotIndexer) -> io::Result<Option<u32>> {
+		let mut diary_reader = diary.reader()?;
+		let mut reader = Reader2::new(root, &mut diary_reader);
+		let reading = reader.read(slot_indexer)?;
+		Ok(reading)
+	}
+
+	fn write_tmp(diary: &Diary, root: Root, slot_indexer: &mut impl SlotIndexer, value: u32) -> io::Result<Root> {
+		let mut diary_writer = diary.writer()?;
+		let mut diary_reader = diary.reader()?;
+		let new_root = {
+			let mut writer = Writer2::new(root, &mut diary_writer, &mut diary_reader);
+			writer.write(value, slot_indexer)?;
+			writer.root
+		};
+		diary.commit(&diary_writer);
+		Ok(new_root)
 	}
 }
 
@@ -132,45 +144,47 @@ impl<'a> Writer2<'a> {
 			let mut depth = 0;
 			let mut root = self.root;
 			let mut done = false;
-			let slot_index = SlotIndex::at(slot_indexer.slot_index(depth) as usize);
-			match reader.read_slot(root, slot_index)? {
-				Slot::Root(sub_root) => {
-					revisions.push(WriteRoot::ReviseWithSubRoot(root, slot_index));
-					root = sub_root;
-					depth += 1;
-				}
-				Slot::KeyValue(defender_key, defender_value) => {
-					let attacker_key = slot_indexer.key();
-					if defender_key == attacker_key {
-						revisions.push(WriteRoot::ReviseWithValue(root, slot_index, Slot::KeyValue(defender_key, value)));
-						done = true;
-					} else {
+			while !done {
+				let slot_index = SlotIndex::at(slot_indexer.slot_index(depth) as usize);
+				match reader.read_slot(root, slot_index)? {
+					Slot::Root(sub_root) => {
 						revisions.push(WriteRoot::ReviseWithSubRoot(root, slot_index));
-						let mut resolution_indices = None;
-						let mut defender_indexer = slot_indexer.with_key(defender_key);
-						let mut resolution_depth = depth;
-						loop {
-							resolution_depth += 1;
-							let defender_index = SlotIndex::at(defender_indexer.slot_index(resolution_depth) as usize);
-							let attacker_index = SlotIndex::at(slot_indexer.slot_index(resolution_depth) as usize);
-							if attacker_index == defender_index {
-								revisions.push(WriteRoot::AddWithSubRoot(attacker_index))
-							} else {
-								resolution_indices = Some((attacker_index, defender_index));
-								break;
+						root = sub_root;
+						depth += 1;
+					}
+					Slot::KeyValue(defender_key, defender_value) => {
+						let attacker_key = slot_indexer.key();
+						if defender_key == attacker_key {
+							revisions.push(WriteRoot::ReviseWithValue(root, slot_index, Slot::KeyValue(defender_key, value)));
+							done = true;
+						} else {
+							revisions.push(WriteRoot::ReviseWithSubRoot(root, slot_index));
+							let mut resolution_indices = None;
+							let mut defender_indexer = slot_indexer.with_key(defender_key);
+							let mut resolution_depth = depth;
+							loop {
+								resolution_depth += 1;
+								let defender_index = SlotIndex::at(defender_indexer.slot_index(resolution_depth) as usize);
+								let attacker_index = SlotIndex::at(slot_indexer.slot_index(resolution_depth) as usize);
+								if attacker_index == defender_index {
+									revisions.push(WriteRoot::AddWithSubRoot(attacker_index))
+								} else {
+									resolution_indices = Some((attacker_index, defender_index));
+									break;
+								}
 							}
+							let (attacker_index, defender_index) = resolution_indices.unwrap();
+							revisions.push(WriteRoot::AddWithValues(
+								attacker_index, Slot::KeyValue(attacker_key, value),
+								defender_index, Slot::KeyValue(defender_key, defender_value),
+							));
+							done = true;
 						}
-						let (attacker_index, defender_index) = resolution_indices.unwrap();
-						revisions.push(WriteRoot::AddWithValues(
-							attacker_index, Slot::KeyValue(attacker_key, value),
-							defender_index, Slot::KeyValue(defender_key, defender_value),
-						));
+					}
+					Slot::Empty => {
+						revisions.push(WriteRoot::ReviseWithValue(root, slot_index, Slot::KeyValue(slot_indexer.key(), value)));
 						done = true;
 					}
-				}
-				Slot::Empty => {
-					revisions.push(WriteRoot::ReviseWithValue(root, slot_index, Slot::KeyValue(slot_indexer.key(), value)));
-					done = true;
 				}
 			}
 			revisions.reverse();

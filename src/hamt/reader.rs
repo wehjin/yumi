@@ -43,24 +43,30 @@ impl<'a> Reader2<'a> {
 	pub fn read(&mut self, slot_indexer: &mut impl SlotIndexer) -> io::Result<Option<u32>> {
 		let mut root = self.root;
 		let mut depth = 0;
-		let mut leaf_value: Option<Option<u32>> = None;
-		while leaf_value.is_none() {
+		let mut leaf_value = None;
+		let mut done = false;
+		while !done {
 			let slot_index = SlotIndex::at(slot_indexer.slot_index(depth) as usize);
-			leaf_value = match self.read_slot(root, slot_index)? {
+			match self.read_slot(root, slot_index)? {
 				Slot::Root(sub_root) => {
 					root = sub_root;
 					depth += 1;
-					None
 				}
-				Slot::KeyValue(key, value) => if key == slot_indexer.key() {
-					Some(Some(value))
-				} else {
-					Some(None)
-				},
-				Slot::Empty => Some(None),
+				Slot::KeyValue(key, value) => {
+					if key == slot_indexer.key() {
+						leaf_value = Some(value);
+					} else {
+						leaf_value = None;
+					}
+					done = true;
+				}
+				Slot::Empty => {
+					leaf_value = None;
+					done = true;
+				}
 			}
 		}
-		Ok(leaf_value.unwrap())
+		Ok(leaf_value)
 	}
 	pub fn read_slot(&mut self, root: Root, slot_index: SlotIndex) -> io::Result<Slot> {
 		debug_assert!(root.pos <= self.root.pos);
