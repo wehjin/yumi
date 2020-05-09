@@ -6,7 +6,7 @@ use crate::hamt::slot::Slot;
 use crate::hamt::slot_indexer::SlotIndexer;
 use crate::mem_file::EntryFile;
 
-pub(crate) use self::read_write::{Reader, Writer};
+pub(crate) use self::read_write::{Reader, Writer, WriteSlot};
 pub(crate) use self::slot_index::SlotIndex;
 
 mod read_write;

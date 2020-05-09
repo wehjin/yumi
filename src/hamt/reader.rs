@@ -46,16 +46,14 @@ impl<'a> Reader2<'a> {
 		let mut leaf_value: Option<Option<u32>> = None;
 		while leaf_value.is_none() {
 			let slot_index = SlotIndex::at(slot_indexer.slot_index(depth) as usize);
-			let mut frame_reader = frame::Reader::new(root, self.diary_reader)?;
-			frame_reader.seek(slot_index)?;
-			leaf_value = match frame_reader.read()? {
+			leaf_value = match self.read_slot(root, slot_index)? {
 				Slot::Root(sub_root) => {
-					root = *sub_root;
+					root = sub_root;
 					depth += 1;
 					None
 				}
-				Slot::KeyValue(key, value) => if *key == slot_indexer.key() {
-					Some(Some(*value))
+				Slot::KeyValue(key, value) => if key == slot_indexer.key() {
+					Some(Some(value))
 				} else {
 					Some(None)
 				},
@@ -63,6 +61,13 @@ impl<'a> Reader2<'a> {
 			}
 		}
 		Ok(leaf_value.unwrap())
+	}
+	pub fn read_slot(&mut self, root: Root, slot_index: SlotIndex) -> io::Result<Slot> {
+		debug_assert!(root.pos <= self.root.pos);
+		let mut frame_reader = frame::Reader::new(root, self.diary_reader)?;
+		frame_reader.seek(slot_index)?;
+		let slot = frame_reader.read()?;
+		Ok(*slot)
 	}
 	pub fn new(root: Root, diary_reader: &'a mut diary::Reader) -> Self {
 		Reader2 { root, diary_reader }

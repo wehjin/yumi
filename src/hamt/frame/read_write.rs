@@ -42,19 +42,34 @@ mod tests {
 	}
 
 	#[test]
-	fn sub_root() -> Result<(), Box<dyn Error>> {
+	fn sub_root_of_slots() -> Result<(), Box<dyn Error>> {
 		let write_slot1 = WriteSlot { slot: Slot::KeyValue(1, 10), slot_index: SlotIndex::at(1) };
 		let write_slot7 = WriteSlot { slot: Slot::KeyValue(7, 70), slot_index: SlotIndex::at(7) };
 		let (path, root) = {
 			let diary = Diary::temp()?;
 			let mut diary_writer = diary.writer()?;
 			let mut writer = frame::Writer::new(&mut diary_writer);
-			let root = writer.write_sub_root(write_slot1, write_slot7)?;
+			let root = writer.write_root_with_slots(write_slot1, write_slot7)?;
 			(diary.file_path, root)
 		};
 		let mut slots = [Slot::Empty; 32];
 		slots[write_slot1.slot_index.as_usize()] = write_slot1.slot;
 		slots[write_slot7.slot_index.as_usize()] = write_slot7.slot;
+		assert_slots(&path, root, &slots)
+	}
+
+	#[test]
+	fn sub_root_of_slot() -> Result<(), Box<dyn Error>> {
+		let write_slot1 = WriteSlot { slot: Slot::KeyValue(1, 10), slot_index: SlotIndex::at(1) };
+		let (path, root) = {
+			let diary = Diary::temp()?;
+			let mut diary_writer = diary.writer()?;
+			let mut writer = frame::Writer::new(&mut diary_writer);
+			let root = writer.write_root_with_slot(write_slot1)?;
+			(diary.file_path, root)
+		};
+		let mut slots = [Slot::Empty; 32];
+		slots[write_slot1.slot_index.as_usize()] = write_slot1.slot;
 		assert_slots(&path, root, &slots)
 	}
 
@@ -109,7 +124,7 @@ impl<'a> Writer<'a> {
 		let pos = first_pos.expect("No pos for first written slot");
 		Ok(Root { pos: pos.u32(), mask })
 	}
-	pub fn write_sub_root(&mut self, write_slot_a: WriteSlot, write_slot_b: WriteSlot) -> io::Result<Root> {
+	pub fn write_root_with_slots(&mut self, write_slot_a: WriteSlot, write_slot_b: WriteSlot) -> io::Result<Root> {
 		debug_assert_ne!(write_slot_a.slot_index, write_slot_b.slot_index);
 		let (first_write, second_write) = if write_slot_a.slot_index < write_slot_b.slot_index {
 			(write_slot_a, write_slot_b)
@@ -118,8 +133,11 @@ impl<'a> Writer<'a> {
 		};
 		let (pos, _size) = self.slot_writer.write(&first_write.slot)?;
 		self.slot_writer.write(&second_write.slot)?;
-		let root_mask = first_write.slot_index.as_mask() | second_write.slot_index.as_mask();
-		Ok(Root { pos: pos.u32(), mask: root_mask })
+		Ok(Root { pos: pos.u32(), mask: first_write.slot_index.as_mask() | second_write.slot_index.as_mask() })
+	}
+	pub fn write_root_with_slot(&mut self, write_slot: WriteSlot) -> io::Result<Root> {
+		let (pos, _size) = self.slot_writer.write(&write_slot.slot)?;
+		Ok(Root { pos: pos.u32(), mask: write_slot.slot_index.as_mask() })
 	}
 	pub fn new(diary_writer: &'a mut diary::Writer) -> Self { Writer { slot_writer: slot::Writer::new(diary_writer) } }
 }

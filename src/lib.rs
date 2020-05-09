@@ -9,9 +9,9 @@ mod beam;
 mod chamber;
 mod core;
 mod echo;
-mod hamt;
 mod mem_file;
 mod util;
+pub mod hamt;
 pub mod diary;
 pub mod bytes;
 
