@@ -17,12 +17,15 @@ use crate::util::io_error_of_box;
 
 #[cfg(test)]
 mod tests {
+	use std::error::Error;
 	use std::sync::Arc;
 
+	use crate::diary::Diary;
 	use crate::hamt::data::{fixture::ZeroThenKeySlotIndexer};
+	use crate::hamt::reader::Reader2;
 	use crate::hamt::Root;
 	use crate::hamt::slot_indexer::SlotIndexer;
-	use crate::hamt::writer::{WriteContext, Writer};
+	use crate::hamt::writer::{WriteContext, Writer, Writer2};
 	use crate::mem_file::MemFile;
 
 	struct WriteScope { transition_depth: usize }
@@ -32,6 +35,8 @@ mod tests {
 			Box::new(ZeroThenKeySlotIndexer { key, transition_depth: self.transition_depth })
 		}
 	}
+
+	// TODO Convert tests to Writer2.
 
 	#[ignore]
 	#[test]
@@ -81,26 +86,34 @@ mod tests {
 		}
 	}
 
-	// TODO Convert tests to Writer2.
 	#[test]
-	fn single_write_changes_read() {
-		let mut scope = WriteScope { transition_depth: 1 };
-		let key = 0x00000001;
-
-		let cursor = Arc::new(MemFile::new());
-		let mut writer = Writer::new(cursor, Root::ZERO);
-		writer.write(0x00000001, 17, &mut scope).unwrap();
-
-		let reader = writer.reader().unwrap();
-		let read = reader.read(&mut scope.slot_indexer(key)).unwrap();
-		assert_eq!(read, Some(17));
+	fn single_write_changes_read() -> Result<(), Box<dyn Error>> {
+		let diary = Diary::temp()?;
+		let mut slot_indexer = ZeroThenKeySlotIndexer { key: 0x00000001, transition_depth: 1 };
+		let value = 17;
+		let root1 = {
+			let mut diary_writer = diary.writer()?;
+			let mut diary_reader = diary.reader()?;
+			let root1 = {
+				let mut writer = Writer2::new(Root::ZERO, &mut diary_writer, &mut diary_reader);
+				writer.write(value, &mut slot_indexer)?;
+				writer.root
+			};
+			diary.commit(&diary_writer);
+			root1
+		};
+		let mut diary_reader = diary.reader()?;
+		let mut reader = Reader2::new(root1, &mut diary_reader);
+		let reading = reader.read(&mut slot_indexer)?;
+		assert_eq!(reading, Some(value));
+		Ok(())
 	}
 }
 
 pub(crate) struct Writer2<'a> {
 	root: Root,
 	diary_writer: &'a mut diary::Writer,
-	build_diary_reader: Box<dyn Fn() -> diary::Reader>,
+	diary_reader: &'a mut diary::Reader,
 }
 
 enum WriteRoot {
@@ -113,10 +126,9 @@ enum WriteRoot {
 impl<'a> Writer2<'a> {
 	pub fn write(&mut self, value: u32, slot_indexer: &mut impl SlotIndexer) -> io::Result<()> {
 		require_empty_high_bit(slot_indexer.key())?;
-		let mut diary_reader = self.build_diary_reader.deref()();
 		let revisions = {
 			let mut revisions = Vec::new();
-			let mut reader = Reader2::new(self.root, &mut diary_reader);
+			let mut reader = Reader2::new(self.root, self.diary_reader);
 			let mut depth = 0;
 			let mut root = self.root;
 			let mut done = false;
@@ -169,7 +181,7 @@ impl<'a> Writer2<'a> {
 		for revision in revisions {
 			match revision {
 				WriteRoot::ReviseWithValue(old_root, slot_index, new_slot) => {
-					let mut frame_reader = frame::Reader::new(old_root, &mut diary_reader)?;
+					let mut frame_reader = frame::Reader::new(old_root, self.diary_reader)?;
 					let new_root = writer.write_revised_root(
 						WriteSlot { slot: new_slot, slot_index },
 						&mut frame_reader,
@@ -178,7 +190,7 @@ impl<'a> Writer2<'a> {
 				}
 				WriteRoot::ReviseWithSubRoot(old_root, slot_index) => {
 					let new_slot = Slot::Root(current_root);
-					let mut frame_reader = frame::Reader::new(old_root, &mut diary_reader)?;
+					let mut frame_reader = frame::Reader::new(old_root, self.diary_reader)?;
 					let new_root = writer.write_revised_root(
 						WriteSlot { slot: new_slot, slot_index },
 						&mut frame_reader,
@@ -204,8 +216,8 @@ impl<'a> Writer2<'a> {
 		self.root = current_root;
 		Ok(())
 	}
-	pub fn new(root: Root, diary_writer: &'a mut diary::Writer, build_diary_reader: impl Fn() -> diary::Reader + 'static) -> Self {
-		Writer2 { root, diary_writer, build_diary_reader: Box::new(build_diary_reader) }
+	pub fn new(root: Root, diary_writer: &'a mut diary::Writer, diary_reader: &'a mut diary::Reader) -> Self {
+		Writer2 { root, diary_writer, diary_reader }
 	}
 }
 
