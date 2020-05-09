@@ -12,29 +12,23 @@ pub struct Diary {
 
 impl Diary {
 	pub fn reader(&self) -> io::Result<Reader> {
-		let file = OpenOptions::new().read(true).open(&self.file_path)?;
-		let file_size = self.file_size.get();
-		Ok(Reader { file, file_size })
+		Reader::new(&self.file_path, self.file_size.get())
 	}
-
+	pub fn commit2(&self, size: usize) {
+		self.file_size.set(size);
+	}
 	pub fn commit(&self, writer: &Writer) {
 		let end_size = writer.end_size();
-		self.file_size.set(end_size);
+		self.commit2(end_size);
 	}
-
 	pub fn writer(&self) -> io::Result<Writer> {
-		let file = OpenOptions::new().append(true).create(true).open(&self.file_path)?;
-		let file_size = self.file_size.get();
-		file.set_len(file_size as u64)?;
-		Ok(Writer::new(file, file_size))
+		Writer::new(&self.file_path, self.file_size.get())
 	}
-
 	pub fn temp() -> io::Result<Diary> {
 		let mut path = std::env::temp_dir();
 		path.push(&format!("diary{}", rand::random::<u32>()));
 		Diary::load(&path)
 	}
-
 	pub fn load(file_path: &Path) -> io::Result<Diary> {
 		let file_path = file_path.to_path_buf();
 		let file_size = {

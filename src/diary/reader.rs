@@ -1,6 +1,7 @@
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io;
 use std::io::{Seek, SeekFrom};
+use std::path::Path;
 
 use crate::{diary, Said, Say, Ship, Subject};
 use crate::bytes::ReadBytes;
@@ -24,5 +25,10 @@ impl Reader {
 	pub fn read<V: ReadBytes<V>>(&mut self, pos: diary::Pos) -> io::Result<V> {
 		self.file.seek(SeekFrom::Start(pos.into()))?;
 		V::read_bytes(&mut self.file)
+	}
+
+	pub fn new(file_path: &Path, file_size: usize) -> io::Result<Reader> {
+		let file = OpenOptions::new().read(true).open(file_path)?;
+		Ok(Reader { file, file_size })
 	}
 }

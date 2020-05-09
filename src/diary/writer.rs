@@ -1,12 +1,14 @@
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io;
 use std::io::{Seek, SeekFrom};
+use std::path::{Path, PathBuf};
 
 use crate::{diary, Say};
 use crate::bytes::WriteBytes;
 use crate::diary::{Pos, SayPos};
 
 pub struct Writer {
+	path: PathBuf,
 	file: File,
 	end_size: usize,
 }
@@ -51,11 +53,15 @@ impl Writer {
 		Ok(say_pos)
 	}
 
-	pub fn end_size(&self) -> usize {
-		self.end_size
+	pub fn reader(&self) -> io::Result<diary::Reader> {
+		diary::Reader::new(&self.path, self.end_size)
 	}
 
-	pub fn new(file: File, file_len: usize) -> Writer {
-		Writer { file, end_size: file_len }
+	pub fn end_size(&self) -> usize { self.end_size }
+
+	pub fn new(path: &Path, file_len: usize) -> io::Result<Writer> {
+		let file = OpenOptions::new().append(true).create(true).open(path)?;
+		file.set_len(file_len as u64)?;
+		Ok(Writer { path: path.to_owned(), file, end_size: file_len })
 	}
 }

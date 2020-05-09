@@ -25,7 +25,6 @@ mod tests {
 		let diary = Diary::temp().unwrap();
 		let mut diary_reader = diary.reader().unwrap();
 		let mut reader = Reader2::new(Root::ZERO, &mut diary_reader);
-		let keys = 1u32..4;
 		for key in 1u32..4 {
 			let mut slot_indexer = ZeroThenKeySlotIndexer { key, transition_depth: 0 };
 			let value = reader.read(&mut slot_indexer).unwrap();
