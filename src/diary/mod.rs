@@ -17,7 +17,7 @@ mod tests {
 
 	#[test]
 	fn main() {
-		let start_say = Say { sayer: Sayer::Unit, subject: Subject::Unit, point: Point::Main, target: Some(Target::Number(3)) };
+		let start_say = Say { sayer: Sayer::Unit, subject: Subject::Unit, point: Point::Unit, target: Some(Target::Number(3)) };
 		let (path, pos) = {
 			let diary = Diary::temp().unwrap();
 			let mut writer = diary.writer().unwrap();

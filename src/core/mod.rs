@@ -32,7 +32,7 @@ pub enum Subject {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Point {
-	Main,
+	Unit,
 	NameAspect(String, String),
 }
 

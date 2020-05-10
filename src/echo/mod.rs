@@ -1,8 +1,7 @@
 use std::{io, thread};
-use std::error::Error;
 use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
-use crate::{AmpContext, AmpScope, Chamber, Say, Sayer, Point, Speech, Subject, Target};
+use crate::{AmpContext, AmpScope, Chamber, Point, Say, Sayer, Speech, Subject, Target};
 use crate::diary::Diary;
 use crate::hamt::{Hamt, Root};
 use crate::util::io_error;
@@ -22,8 +21,17 @@ enum Action {
 }
 
 impl Echo {
-	pub fn write(&mut self, target: Target) -> io::Result<Chamber> {
-		let say = Say { sayer: Sayer::Unit, subject: Subject::Unit, point: Point::Main, target: Some(target) };
+	pub fn write_unit_attributes(&mut self, v: Vec<(&Point, Target)>) -> io::Result<Chamber> {
+		for (point, target) in v {
+			let say = Say { sayer: Sayer::Unit, subject: Subject::Unit, point: point.to_owned(), target: Some(target) };
+			let speech = Speech { says: vec![say] };
+			self.send_speech(speech)?;
+		}
+		self.chamber()
+	}
+
+	pub fn write_unit_target(&mut self, target: Target) -> io::Result<Chamber> {
+		let say = Say { sayer: Sayer::Unit, subject: Subject::Unit, point: Point::Unit, target: Some(target) };
 		let speech = Speech { says: vec![say] };
 		self.send_speech(speech)
 	}
@@ -41,18 +49,16 @@ impl Echo {
 		rx.recv().map_err(io_error)?
 	}
 
-	pub fn latest(&self) -> Result<Chamber, Box<dyn Error>> {
+	pub fn chamber(&self) -> io::Result<Chamber> {
 		let (tx, rx) = channel::<Chamber>();
 		let action = Action::Latest(tx);
 		self.tx.send(action).unwrap();
-		let ray = rx.recv()?;
-		Ok(ray)
+		rx.recv().map_err(io_error)
 	}
 
 	pub fn connect() -> Echo {
 		let (tx, rx) = sync_channel::<Action>(64);
 		let echo = Echo { tx };
-		let thread_echo = echo.clone();
 		thread::spawn(move || {
 			let diary = Diary::temp().unwrap();
 			let mut diary_writer = diary.writer().unwrap();
@@ -67,7 +73,6 @@ impl Echo {
 						}
 						diary.commit2(diary_writer.end_size());
 						let chamber = Chamber {
-							origin: thread_echo.to_owned(),
 							reader: hamt2.reader().unwrap(),
 							diary_reader: diary.reader().unwrap(),
 						};
@@ -76,7 +81,6 @@ impl Echo {
 					Action::Latest(tx) => {
 						// TODO Deal with reader unwrap.
 						let chamber = Chamber {
-							origin: thread_echo.to_owned(),
 							reader: hamt2.reader().unwrap(),
 							diary_reader: diary.reader().unwrap(),
 						};
