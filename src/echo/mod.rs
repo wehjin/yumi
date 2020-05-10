@@ -2,7 +2,7 @@ use std::{io, thread};
 use std::error::Error;
 use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
-use crate::{AmpContext, AmpScope, Chamber, Said, Say, Sayer, Ship, Speech, Subject};
+use crate::{AmpContext, AmpScope, Chamber, Say, Sayer, Ship, Speech, Subject, T};
 use crate::diary::Diary;
 use crate::hamt::{Hamt, Root};
 use crate::util::io_error;
@@ -22,19 +22,19 @@ enum Action {
 }
 
 impl Echo {
-	pub fn write(&self, said: Said) -> io::Result<Chamber> {
-		let say = Say { sayer: Sayer::Unit, subject: Subject::Unit, ship: Ship::Unit, said: Some(said) };
+	pub fn write(&mut self, target: T) -> io::Result<Chamber> {
+		let say = Say { sayer: Sayer::Unit, subject: Subject::Unit, ship: Ship::Unit, target: Some(target) };
 		let speech = Speech { says: vec![say] };
 		self.send_speech(speech)
 	}
 
-	pub fn batch_write(&self, f: impl FnOnce(&mut dyn AmpContext) -> ()) -> io::Result<Chamber> {
+	pub fn batch_write(&mut self, f: impl FnOnce(&mut dyn AmpContext) -> ()) -> io::Result<Chamber> {
 		let mut amp = AmpScope { says: Vec::new() };
 		f(&mut amp);
 		self.send_speech(amp.speech())
 	}
 
-	fn send_speech(&self, speech: Speech) -> io::Result<Chamber> {
+	fn send_speech(&mut self, speech: Speech) -> io::Result<Chamber> {
 		let (tx, rx) = channel::<io::Result<Chamber>>();
 		let action = Action::Speech(speech, tx);
 		self.tx.send(action).unwrap();
@@ -63,7 +63,7 @@ impl Echo {
 						// TODO Deal with reader and write unwraps.
 						for say in speech.says {
 							let key = say.as_echo_key();
-							hamt2.write_value(&key, &say.said, &mut diary_writer).unwrap();
+							hamt2.write_value(&key, &say.target, &mut diary_writer).unwrap();
 						}
 						diary.commit2(diary_writer.end_size());
 						let chamber = Chamber {

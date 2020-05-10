@@ -18,28 +18,29 @@ pub mod bytes;
 mod tests {
 	use std::error::Error;
 
-	use crate::{Echo, Said, Sayer, Ship, Subject};
+	use crate::{Echo, Sayer, Ship, Subject, T};
 
 	#[test]
 	fn main() -> Result<(), Box<dyn Error>> {
 		let sayer = Sayer::Named("Bob".into());
 		let subject = Subject::Sayer(sayer.clone());
 		let ship = Ship::FieldGroup("counter".into(), "Count".into());
-		let mut chamber = Echo::connect().latest()?;
-		let mut new_chamber = chamber.origin()
-			.batch_write(|ctx| {
-				ctx.say(&sayer, &subject, &ship, &Said::Number(3))
-			})?;
-		assert_eq!(new_chamber.full_read(&sayer, &subject, &ship), Some(Said::Number(3)));
+		let mut echo = Echo::connect();
+		let mut chamber = echo.latest()?;
+		let mut new_chamber = echo.batch_write(|ctx| {
+			ctx.say(&sayer, &subject, &ship, &T::Number(3))
+		})?;
+		assert_eq!(new_chamber.full_read(&sayer, &subject, &ship), Some(T::Number(3)));
 		assert_eq!(chamber.full_read(&sayer, &subject, &ship), None);
 		Ok(())
 	}
 
 	#[test]
-	fn said() -> Result<(), Box<dyn Error>> {
-		let mut chamber = Echo::connect().latest()?;
-		let mut new_chamber = chamber.origin().write(Said::Number(3))?;
-		assert_eq!(new_chamber.read(), Some(Said::Number(3)));
+	fn target() -> Result<(), Box<dyn Error>> {
+		let mut echo = Echo::connect();
+		let mut chamber = echo.latest()?;
+		let mut new_chamber = echo.write(T::Number(3))?;
+		assert_eq!(new_chamber.read(), Some(T::Number(3)));
 		assert_eq!(chamber.read(), None);
 		Ok(())
 	}

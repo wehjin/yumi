@@ -12,7 +12,7 @@ pub struct Say {
 	pub sayer: Sayer,
 	pub subject: Subject,
 	pub ship: Ship,
-	pub said: Option<Said>,
+	pub target: Option<T>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -34,7 +34,7 @@ pub enum Ship {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum Said {
+pub enum T {
 	Number(u64)
 }
 

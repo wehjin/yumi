@@ -47,9 +47,9 @@ impl Writer {
 		let (sayer_start, sayer_size) = self.write(&say.sayer)?;
 		let (subject_start, subject_size) = self.write(&say.subject)?;
 		let (ship_start, ship_size) = self.write(&say.ship)?;
-		let (said_start, said_size) = self.write(&say.said)?;
-		let end = Pos::at(start + sayer_size + subject_size + ship_size + said_size);
-		let say_pos = SayPos { sayer: sayer_start, subject: subject_start, ship: ship_start, said: said_start, end };
+		let (target_start, target_size) = self.write(&say.target)?;
+		let end = Pos::at(start + sayer_size + subject_size + ship_size + target_size);
+		let say_pos = SayPos { sayer: sayer_start, subject: subject_start, ship: ship_start, target: target_start, end };
 		Ok(say_pos)
 	}
 

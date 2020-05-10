@@ -2,7 +2,7 @@ use std::io;
 use std::io::{Read, Write};
 use std::ops::Deref;
 
-use crate::{Said, Sayer, Ship, Subject};
+use crate::{Sayer, Ship, Subject, T};
 use crate::util::{big_end_first_2, big_end_first_4, big_end_first_8, io_error_of_utf8, u16_of_buf, U32x2, u32x2_of_buf, u64_of_buf};
 
 pub trait WriteBytes {
@@ -13,20 +13,20 @@ pub trait ReadBytes<T> {
 	fn read_bytes(reader: &mut impl Read) -> io::Result<T>;
 }
 
-impl ReadBytes<Option<Said>> for Option<Said> {
+impl ReadBytes<Option<T>> for Option<T> {
 	fn read_bytes(reader: &mut impl Read) -> io::Result<Self> {
 		match u8::read_bytes(reader)? {
 			0 => Ok(None),
 			1 => {
 				let n = u64::read_bytes(reader)?;
-				Ok(Some(Said::Number(n)))
+				Ok(Some(T::Number(n)))
 			}
 			_ => unimplemented!()
 		}
 	}
 }
 
-impl WriteBytes for Option<Said> {
+impl WriteBytes for Option<T> {
 	/// Returns the number of bytes written
 	fn write_bytes(&self, writer: &mut impl Write) -> io::Result<usize> {
 		match self {
@@ -34,9 +34,9 @@ impl WriteBytes for Option<Said> {
 				writer.write_all(&[0])?;
 				Ok(1)
 			}
-			Some(said) => {
-				match said {
-					Said::Number(n) => {
+			Some(target) => {
+				match target {
+					T::Number(n) => {
 						writer.write_all(&[1])?;
 						let bytes = n.write_bytes(writer)?;
 						Ok(1 + bytes)
