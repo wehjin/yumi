@@ -34,7 +34,6 @@ mod tests {
 
 	#[test]
 	fn double_write_multiple_collision_changes_read() -> Result<(), Box<dyn Error>> {
-		let diary = Diary::temp()?;
 		let mut slot_indexer1 = ZeroThenKeySlotIndexer { key: 1, transition_depth: 3 };
 		let mut slot_indexer2 = ZeroThenKeySlotIndexer { key: 2, transition_depth: 3 };
 		let (root, path) = write_values(Root::ZERO, vec![
@@ -45,9 +44,9 @@ mod tests {
 		])?;
 		let diary = Diary::load(&path)?;
 		let mut diary_reader = diary.reader()?;
-		let mut reader = Reader2::new(root, &mut diary_reader);
-		let value1 = reader.read(&mut slot_indexer1)?;
-		let value2 = reader.read(&mut slot_indexer2)?;
+		let reader = Reader2::new(root);
+		let value1 = reader.read(&mut slot_indexer1, &mut diary_reader)?;
+		let value2 = reader.read(&mut slot_indexer2, &mut diary_reader)?;
 		assert_eq!((value1, value2), (Some(10), Some(20)));
 		Ok(())
 	}
@@ -67,10 +66,10 @@ mod tests {
 		])?;
 		let diary = Diary::load(&path)?;
 		let mut diary_reader = diary.reader()?;
-		let mut reader = Reader2::new(new_root, &mut diary_reader);
-		let value1 = reader.read(&mut slot_indexer1)?;
-		let value2 = reader.read(&mut slot_indexer2)?;
-		let value3 = reader.read(&mut slot_indexer3)?;
+		let reader = Reader2::new(new_root);
+		let value1 = reader.read(&mut slot_indexer1, &mut diary_reader)?;
+		let value2 = reader.read(&mut slot_indexer2, &mut diary_reader)?;
+		let value3 = reader.read(&mut slot_indexer3, &mut diary_reader)?;
 		assert_eq!((value1, value2, value3), (Some(10), Some(20), Some(30)));
 		Ok(())
 	}
@@ -83,8 +82,8 @@ mod tests {
 		])?;
 		let diary = Diary::load(&path)?;
 		let mut diary_reader = diary.reader()?;
-		let mut reader = Reader2::new(new_root, &mut diary_reader);
-		let reading = reader.read(&mut slot_indexer)?;
+		let reader = Reader2::new(new_root);
+		let reading = reader.read(&mut slot_indexer, &mut diary_reader)?;
 		assert_eq!(reading, Some(17));
 		Ok(())
 	}
@@ -114,18 +113,18 @@ enum WriteRoot {
 }
 
 impl<'a> Writer2<'a> {
-	pub fn write(&mut self, value: u32, slot_indexer: &mut impl SlotIndexer) -> io::Result<()> {
+	pub fn write(&mut self, value: u32, slot_indexer: &mut impl SlotIndexer) -> io::Result<Root> {
 		require_empty_high_bit(slot_indexer.key())?;
 		let mut diary_reader = self.diary_writer.reader()?;
 		let revisions = {
+			let reader = Reader2::new(self.root);
 			let mut revisions = Vec::new();
-			let mut reader = Reader2::new(self.root, &mut diary_reader);
 			let mut depth = 0;
 			let mut root = self.root;
 			let mut done = false;
 			while !done {
 				let slot_index = SlotIndex::at(slot_indexer.slot_index(depth) as usize);
-				match reader.read_slot(root, slot_index)? {
+				match reader.read_slot(root, slot_index, &mut diary_reader)? {
 					Slot::Root(sub_root) => {
 						revisions.push(WriteRoot::ReviseWithSubRoot(root, slot_index));
 						root = sub_root;
@@ -207,16 +206,13 @@ impl<'a> Writer2<'a> {
 			}
 		}
 		self.root = current_root;
-		Ok(())
+		Ok(self.root)
 	}
 
 	pub fn end_size(&self) -> usize {
 		self.diary_writer.end_size()
 	}
-
-	pub fn new(root: Root, diary_writer: &'a mut diary::Writer) -> Self {
-		Writer2 { root, diary_writer }
-	}
+	pub fn new(root: Root, diary_writer: &'a mut diary::Writer) -> Self { Writer2 { root, diary_writer } }
 }
 
 pub(crate) struct Writer {

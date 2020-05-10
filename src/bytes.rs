@@ -135,8 +135,8 @@ impl WriteBytes for Sayer {
 
 impl ReadBytes<String> for String {
 	fn read_bytes(reader: &mut impl Read) -> io::Result<Self> {
-		let string_len = u16::read_bytes(reader)?;
-		let mut bytes = Vec::with_capacity(string_len as usize);
+		let byte_count = u16::read_bytes(reader)?;
+		let mut bytes = vec![0u8; byte_count as usize];
 		reader.read_exact(&mut bytes)?;
 		let string = String::from_utf8(bytes).map_err(io_error_of_utf8)?;
 		Ok(string)

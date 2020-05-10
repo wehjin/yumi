@@ -36,6 +36,7 @@ pub struct UniversalHasher {
 
 impl UniversalHasher {
 	pub fn new(level: u64) -> Self {
+		assert_ne!(level, 0);
 		UniversalHasher { level, a: 31415, hash: 0 }
 	}
 }

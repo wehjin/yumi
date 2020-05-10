@@ -24,29 +24,28 @@ mod tests {
 	fn empty_produces_no_value() {
 		let diary = Diary::temp().unwrap();
 		let mut diary_reader = diary.reader().unwrap();
-		let mut reader = Reader2::new(Root::ZERO, &mut diary_reader);
+		let reader = Reader2::new(Root::ZERO);
 		for key in 1u32..4 {
 			let mut slot_indexer = ZeroThenKeySlotIndexer { key, transition_depth: 0 };
-			let value = reader.read(&mut slot_indexer).unwrap();
+			let value = reader.read(&mut slot_indexer, &mut diary_reader).unwrap();
 			assert_eq!(value, None)
 		}
 	}
 }
 
-pub(crate) struct Reader2<'a> {
+pub(crate) struct Reader2 {
 	root: Root,
-	diary_reader: &'a mut diary::Reader,
 }
 
-impl<'a> Reader2<'a> {
-	pub fn read(&mut self, slot_indexer: &mut impl SlotIndexer) -> io::Result<Option<u32>> {
+impl Reader2 {
+	pub fn read(&self, slot_indexer: &mut impl SlotIndexer, diary_reader: &mut diary::Reader) -> io::Result<Option<u32>> {
 		let mut root = self.root;
 		let mut depth = 0;
 		let mut leaf_value = None;
 		let mut done = false;
 		while !done {
 			let slot_index = SlotIndex::at(slot_indexer.slot_index(depth) as usize);
-			match self.read_slot(root, slot_index)? {
+			match self.read_slot(root, slot_index, diary_reader)? {
 				Slot::Root(sub_root) => {
 					root = sub_root;
 					depth += 1;
@@ -67,15 +66,15 @@ impl<'a> Reader2<'a> {
 		}
 		Ok(leaf_value)
 	}
-	pub fn read_slot(&mut self, root: Root, slot_index: SlotIndex) -> io::Result<Slot> {
+	pub fn read_slot(&self, root: Root, slot_index: SlotIndex, diary_reader: &mut diary::Reader) -> io::Result<Slot> {
 		debug_assert!(root.pos <= self.root.pos);
-		let mut frame_reader = frame::Reader::new(root, self.diary_reader)?;
+		let mut frame_reader = frame::Reader::new(root, diary_reader)?;
 		frame_reader.seek(slot_index)?;
 		let slot = frame_reader.read()?;
 		Ok(*slot)
 	}
-	pub fn new(root: Root, diary_reader: &'a mut diary::Reader) -> Self {
-		Reader2 { root, diary_reader }
+	pub fn new(root: Root) -> Self {
+		Reader2 { root }
 	}
 }
 
