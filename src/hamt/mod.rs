@@ -26,14 +26,14 @@ mod tests {
 	use std::hash::{Hash, Hasher};
 
 	use crate::diary::Diary;
-	use crate::hamt::{Hamt2, Key, Root};
+	use crate::hamt::{Hamt, Key, Root};
 
 	#[test]
 	fn write_read() -> Result<(), Box<dyn Error>> {
 		let key = TestKey { n: 5 };
 		let diary = Diary::temp()?;
 		let mut diary_writer = diary.writer()?;
-		let mut hamt = Hamt2::new(Root::ZERO);
+		let mut hamt = Hamt::new(Root::ZERO);
 		hamt.write_value(&key, &"Hello".to_string(), &mut diary_writer)?;
 
 		let mut diary_reader = diary_writer.reader()?;
@@ -48,7 +48,7 @@ mod tests {
 		let key = TestKey { n: 5 };
 		let diary = Diary::temp()?;
 		let mut diary_reader = diary.reader()?;
-		let hamt = Hamt2::new(Root::ZERO);
+		let hamt = Hamt::new(Root::ZERO);
 		let reader = hamt.reader()?;
 		let value: Option<String> = reader.read_value(&key, &mut diary_reader)?;
 		assert_eq!(value, None);
@@ -80,11 +80,11 @@ impl Reader {
 	}
 }
 
-pub(crate) struct Hamt2 {
+pub(crate) struct Hamt {
 	root: Root,
 }
 
-impl Hamt2 {
+impl Hamt {
 	pub fn write_value(&mut self, key: &impl hamt::Key, value: &impl WriteBytes, diary_writer: &mut diary::Writer) -> io::Result<()> {
 		let key = key.universal(1);
 		let mut slot_indexer = UniversalSlotPicker::new(key);
@@ -94,7 +94,7 @@ impl Hamt2 {
 		Ok(())
 	}
 	pub fn reader(&self) -> io::Result<Reader> { Ok(Reader::new(self.root)) }
-	pub fn new(root: Root) -> Self { Hamt2 { root } }
+	pub fn new(root: Root) -> Self { Hamt { root } }
 }
 
 struct UniversalWriteScope {}

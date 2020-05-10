@@ -4,7 +4,7 @@ use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
 use crate::{AmpContext, AmpScope, Chamber, Said, Say, Sayer, Ship, Speech, Subject};
 use crate::diary::Diary;
-use crate::hamt::{Hamt2, Root};
+use crate::hamt::{Hamt, Root};
 use crate::util::io_error;
 
 pub use self::key::*;
@@ -56,7 +56,7 @@ impl Echo {
 		thread::spawn(move || {
 			let diary = Diary::temp().unwrap();
 			let mut diary_writer = diary.writer().unwrap();
-			let mut hamt2 = Hamt2::new(Root::ZERO);
+			let mut hamt2 = Hamt::new(Root::ZERO);
 			for action in rx {
 				match action {
 					Action::Speech(speech, tx) => {
