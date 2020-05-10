@@ -1,36 +1,26 @@
-use std::error::Error;
 use std::io;
 use std::io::ErrorKind;
-use std::net::Shutdown::Write;
-use std::ops::Deref;
-use std::sync::Arc;
 
 use crate::diary;
-use crate::hamt::frame::{Frame, SlotIndex, WriteSlot};
+use crate::hamt::frame::{SlotIndex, WriteSlot};
 use crate::hamt::frame;
-use crate::hamt::reader::{Reader, Reader2};
+use crate::hamt::reader::Reader;
 use crate::hamt::root::Root;
 use crate::hamt::slot::Slot;
 use crate::hamt::slot_indexer::SlotIndexer;
-use crate::mem_file::EntryFile;
-use crate::util::io_error_of_box;
 
 #[cfg(test)]
 mod tests {
 	use std::error::Error;
-	use std::fs::read;
 	use std::io;
 	use std::path::PathBuf;
-	use std::sync::Arc;
 
-	use crate::diary;
 	use crate::diary::Diary;
 	use crate::hamt::data::{fixture::ZeroThenKeySlotIndexer};
-	use crate::hamt::frame::SlotIndex;
-	use crate::hamt::reader::Reader2;
+	use crate::hamt::reader::Reader;
 	use crate::hamt::Root;
 	use crate::hamt::slot_indexer::SlotIndexer;
-	use crate::hamt::writer::Writer2;
+	use crate::hamt::writer::Writer;
 
 	#[test]
 	fn double_write_multiple_collision_changes_read() -> Result<(), Box<dyn Error>> {
@@ -44,7 +34,7 @@ mod tests {
 		])?;
 		let diary = Diary::load(&path)?;
 		let mut diary_reader = diary.reader()?;
-		let reader = Reader2::new(root);
+		let reader = Reader::new(root);
 		let value1 = reader.read(&mut slot_indexer1, &mut diary_reader)?;
 		let value2 = reader.read(&mut slot_indexer2, &mut diary_reader)?;
 		assert_eq!((value1, value2), (Some(10), Some(20)));
@@ -66,7 +56,7 @@ mod tests {
 		])?;
 		let diary = Diary::load(&path)?;
 		let mut diary_reader = diary.reader()?;
-		let reader = Reader2::new(new_root);
+		let reader = Reader::new(new_root);
 		let value1 = reader.read(&mut slot_indexer1, &mut diary_reader)?;
 		let value2 = reader.read(&mut slot_indexer2, &mut diary_reader)?;
 		let value3 = reader.read(&mut slot_indexer3, &mut diary_reader)?;
@@ -82,7 +72,7 @@ mod tests {
 		])?;
 		let diary = Diary::load(&path)?;
 		let mut diary_reader = diary.reader()?;
-		let reader = Reader2::new(new_root);
+		let reader = Reader::new(new_root);
 		let reading = reader.read(&mut slot_indexer, &mut diary_reader)?;
 		assert_eq!(reading, Some(17));
 		Ok(())
@@ -91,7 +81,7 @@ mod tests {
 	fn write_values(root: Root, tasks: Vec<(&mut impl SlotIndexer, u32)>) -> io::Result<(Root, PathBuf)> {
 		let diary = Diary::temp()?;
 		let mut diary_writer = diary.writer()?;
-		let mut writer = Writer2::new(root, &mut diary_writer);
+		let mut writer = Writer::new(root, &mut diary_writer);
 		for (slot_indexer, value) in tasks {
 			writer.write(value, slot_indexer)?;
 		}
@@ -100,7 +90,8 @@ mod tests {
 	}
 }
 
-pub(crate) struct Writer2<'a> {
+// TODO Move diary_writer from struct to fn arg.
+pub(crate) struct Writer<'a> {
 	root: Root,
 	diary_writer: &'a mut diary::Writer,
 }
@@ -112,12 +103,12 @@ enum WriteRoot {
 	AddWithSubRoot(SlotIndex),
 }
 
-impl<'a> Writer2<'a> {
+impl<'a> Writer<'a> {
 	pub fn write(&mut self, value: u32, slot_indexer: &mut impl SlotIndexer) -> io::Result<Root> {
 		require_empty_high_bit(slot_indexer.key())?;
 		let mut diary_reader = self.diary_writer.reader()?;
 		let revisions = {
-			let reader = Reader2::new(self.root);
+			let reader = Reader::new(self.root);
 			let mut revisions = Vec::new();
 			let mut depth = 0;
 			let mut root = self.root;
@@ -140,7 +131,7 @@ impl<'a> Writer2<'a> {
 							let mut resolution_indices = None;
 							let mut defender_indexer = slot_indexer.with_key(defender_key);
 							let mut resolution_depth = depth;
-							loop {
+							while resolution_indices == None {
 								resolution_depth += 1;
 								let defender_index = SlotIndex::at(defender_indexer.slot_index(resolution_depth) as usize);
 								let attacker_index = SlotIndex::at(slot_indexer.slot_index(resolution_depth) as usize);
@@ -148,7 +139,6 @@ impl<'a> Writer2<'a> {
 									revisions.push(WriteRoot::AddWithSubRoot(attacker_index))
 								} else {
 									resolution_indices = Some((attacker_index, defender_index));
-									break;
 								}
 							}
 							let (attacker_index, defender_index) = resolution_indices.unwrap();
@@ -212,78 +202,7 @@ impl<'a> Writer2<'a> {
 	pub fn end_size(&self) -> usize {
 		self.diary_writer.end_size()
 	}
-	pub fn new(root: Root, diary_writer: &'a mut diary::Writer) -> Self { Writer2 { root, diary_writer } }
-}
-
-pub(crate) struct Writer {
-	dest: Arc<dyn EntryFile>,
-	root: Root,
-}
-
-impl Writer {
-	pub fn reader(&self) -> Result<Reader, Box<dyn Error>> {
-		Reader::new(self.dest.clone(), self.root)
-	}
-
-	pub fn write(&mut self, key: u32, value: u32, ctx: &mut impl WriteContext) -> io::Result<()> {
-		require_empty_high_bit(key)?;
-		let mut reader = self.reader().map_err(|e| {
-			io::Error::new(ErrorKind::Other, e.to_string())
-		})?;
-		let mut indexer = ctx.slot_indexer(key);
-		let root = self.write_indexer(&mut indexer, 0, reader.root, value, &mut reader).map_err(|e| {
-			io::Error::new(ErrorKind::Other, e.to_string())
-		})?;
-		self.root = root;
-		Ok(())
-	}
-
-	fn write_indexer(&mut self, indexer: &mut impl SlotIndexer, depth: usize, root: Root, value: u32, reader: &mut Reader) -> io::Result<Root> {
-		let key = indexer.key();
-		let index = indexer.slot_index(depth);
-		let frame = reader.read_frame(root).map_err(io_error_of_box)?;
-		match &frame.slots[index as usize] {
-			Slot::KeyValue(conflict_key, conflict_value) => {
-				if *conflict_key == key {
-					frame.with_value_slot(index, key, value).write(&mut self.dest)
-				} else {
-					let next_depth = depth + 1;
-					let mut conflict_indexer = indexer.with_key(*conflict_key);
-					let conflict_index = conflict_indexer.slot_index(next_depth);
-					let next_index = indexer.slot_index(next_depth);
-					if conflict_index == next_index {
-						unimplemented!()
-					} else {
-						let sub_frame = Frame::empty()
-							.with_value_slot(conflict_index, *conflict_key, *conflict_value)
-							.with_value_slot(next_index, key, value);
-						let sub_root: Root = sub_frame.write(&mut self.dest)?;
-						let sub_root = self.require_31_bit_position(sub_root)?;
-						let parent_root = frame.with_ref_slot(index, sub_root).write(&mut self.dest)?;
-						Ok(parent_root)
-					}
-				}
-			}
-			Slot::Root(root) => {
-				let sub_root: Root = self.write_indexer(indexer, depth + 1, *root, value, reader)?;
-				let sub_root = self.require_31_bit_position(sub_root)?;
-				let parent_frame = frame.with_ref_slot(index, sub_root);
-				let parent_root = parent_frame.write(&mut self.dest)?;
-				Ok(parent_root)
-			}
-			Slot::Empty => {
-				let frame = frame.with_value_slot(index, key, value);
-				let root = frame.write(&self.dest)?;
-				Ok(root)
-			}
-		}
-	}
-
-	fn require_31_bit_position(&self, root: Root) -> io::Result<Root> {
-		require_empty_high_bit(root.pos).map(|_| root)
-	}
-	pub fn root(&self) -> Root { self.root }
-	pub fn new(dest: Arc<dyn EntryFile>, root: Root) -> Self { Writer { dest: dest.clone(), root } }
+	pub fn new(root: Root, diary_writer: &'a mut diary::Writer) -> Self { Writer { root, diary_writer } }
 }
 
 pub(crate) trait WriteContext {

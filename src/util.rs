@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::io;
 use std::io::ErrorKind;
 use std::string::FromUtf8Error;
@@ -76,10 +75,6 @@ pub(crate) fn u32x2_of_buf(buf: &[u8; 8]) -> U32x2 {
 }
 
 pub(crate) fn io_error(error: RecvError) -> io::Error {
-	io::Error::new(ErrorKind::Other, error.to_string())
-}
-
-pub(crate) fn io_error_of_box(error: Box<dyn Error>) -> io::Error {
 	io::Error::new(ErrorKind::Other, error.to_string())
 }
 

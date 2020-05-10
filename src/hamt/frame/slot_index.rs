@@ -1,12 +1,11 @@
 use std::ops::Range;
 
-use crate::hamt::slot::Slot;
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub(crate) struct SlotIndex { n: usize }
+pub(crate) struct SlotIndex {
+	pub n: usize
+}
 
 impl SlotIndex {
-	pub fn as_usize(&self) -> usize { self.n }
 	pub fn as_mask(&self) -> u32 { MASK_TABLE[self.n] }
 	pub fn at(n: usize) -> Self {
 		debug_assert!(n < 32);

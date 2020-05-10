@@ -9,7 +9,6 @@ mod beam;
 mod chamber;
 mod core;
 mod echo;
-mod mem_file;
 mod util;
 pub mod hamt;
 pub mod diary;
@@ -31,8 +30,8 @@ mod tests {
 			.batch_write(|ctx| {
 				ctx.say(&sayer, &subject, &ship, &Said::Number(3))
 			})?;
-		assert_eq!(new_chamber.full_read(&sayer, &subject, &ship), &Some(Said::Number(3)));
-		assert_eq!(chamber.full_read(&sayer, &subject, &ship), &None);
+		assert_eq!(new_chamber.full_read(&sayer, &subject, &ship), Some(Said::Number(3)));
+		assert_eq!(chamber.full_read(&sayer, &subject, &ship), None);
 		Ok(())
 	}
 
@@ -40,8 +39,8 @@ mod tests {
 	fn said() -> Result<(), Box<dyn Error>> {
 		let mut chamber = Echo::connect().latest()?;
 		let mut new_chamber = chamber.origin().write(Said::Number(3))?;
-		assert_eq!(new_chamber.read(), &Some(Said::Number(3)));
-		assert_eq!(chamber.read(), &None);
+		assert_eq!(new_chamber.read(), Some(Said::Number(3)));
+		assert_eq!(chamber.read(), None);
 		Ok(())
 	}
 }

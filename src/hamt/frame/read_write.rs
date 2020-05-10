@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::io;
 
 use crate::diary;
@@ -37,7 +36,7 @@ mod tests {
 			(diary.file_path, second_root)
 		};
 		let mut slots = [Slot::Empty; 32];
-		slots[slot_index.as_usize()] = slot_b;
+		slots[slot_index.n as usize] = slot_b;
 		assert_slots(&path, root, &slots)
 	}
 
@@ -53,8 +52,8 @@ mod tests {
 			(diary.file_path, root)
 		};
 		let mut slots = [Slot::Empty; 32];
-		slots[write_slot1.slot_index.as_usize()] = write_slot1.slot;
-		slots[write_slot7.slot_index.as_usize()] = write_slot7.slot;
+		slots[write_slot1.slot_index.n as usize] = write_slot1.slot;
+		slots[write_slot7.slot_index.n as usize] = write_slot7.slot;
 		assert_slots(&path, root, &slots)
 	}
 
@@ -69,7 +68,7 @@ mod tests {
 			(diary.file_path, root)
 		};
 		let mut slots = [Slot::Empty; 32];
-		slots[write_slot1.slot_index.as_usize()] = write_slot1.slot;
+		slots[write_slot1.slot_index.n as usize] = write_slot1.slot;
 		assert_slots(&path, root, &slots)
 	}
 

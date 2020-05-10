@@ -4,7 +4,7 @@ use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
 use crate::{AmpContext, AmpScope, Chamber, Said, Say, Sayer, Ship, Speech, Subject};
 use crate::diary::Diary;
-use crate::hamt::Hamt;
+use crate::hamt::{Hamt2, Root};
 use crate::util::io_error;
 
 pub use self::key::*;
@@ -54,33 +54,33 @@ impl Echo {
 		let echo = Echo { tx };
 		let thread_echo = echo.clone();
 		thread::spawn(move || {
-			let mut hamt = Hamt::new(Diary::temp().unwrap());
+			let diary = Diary::temp().unwrap();
+			let mut diary_writer = diary.writer().unwrap();
+			let mut hamt2 = Hamt2::new(Root::ZERO);
 			for action in rx {
 				match action {
 					Action::Speech(speech, tx) => {
-						let init = hamt.extender();
-						let extender = speech.says.iter().fold(
-							Ok(init),
-							|result, say| {
-								if let Ok(extender) = result {
-									let key = say.as_echo_key();
-									let extension = extender.extend(&key, &say.said);
-									extension
-								} else { result }
-							},
-						);
-						let chamber = extender.map(|extender| {
-							hamt.commit(extender);
-							Chamber { origin: thread_echo.to_owned(), viewer: hamt.viewer() }
-						});
-						tx.send(chamber).unwrap();
+						// TODO Deal with reader and write unwraps.
+						for say in speech.says {
+							let key = say.as_echo_key();
+							hamt2.write_value(&key, &say.said, &mut diary_writer).unwrap();
+						}
+						diary.commit2(diary_writer.end_size());
+						let chamber = Chamber {
+							origin: thread_echo.to_owned(),
+							reader: hamt2.reader().unwrap(),
+							diary_reader: diary.reader().unwrap(),
+						};
+						tx.send(Ok(chamber)).unwrap();
 					}
 					Action::Latest(tx) => {
-						let ray = Chamber {
+						// TODO Deal with reader unwrap.
+						let chamber = Chamber {
 							origin: thread_echo.to_owned(),
-							viewer: hamt.viewer(),
+							reader: hamt2.reader().unwrap(),
+							diary_reader: diary.reader().unwrap(),
 						};
-						tx.send(ray).unwrap();
+						tx.send(chamber).unwrap();
 					}
 				}
 			}
