@@ -1,4 +1,4 @@
-use crate::{diary, Echo, Sayer, Ship, Subject, T};
+use crate::{diary, Echo, Sayer, Point, Subject, Target};
 use crate::echo::EchoKey;
 use crate::hamt::Reader;
 
@@ -9,18 +9,18 @@ pub struct Chamber {
 }
 
 impl Chamber {
-	pub fn full_read(&mut self, sayer: &Sayer, subject: &Subject, ship: &Ship) -> Option<T> {
-		let key = EchoKey::SayerSubjectShip(sayer.clone(), subject.clone(), ship.clone());
+	pub fn full_read(&mut self, sayer: &Sayer, subject: &Subject, point: &Point) -> Option<Target> {
+		let key = EchoKey::SayerSubjectPoint(sayer.clone(), subject.clone(), point.clone());
 		self.target(&key)
 	}
 
-	fn target(&mut self, key: &EchoKey) -> Option<T> {
-		let target: Option<Option<T>> = self.reader.read_value(key, &mut self.diary_reader).unwrap();
+	fn target(&mut self, key: &EchoKey) -> Option<Target> {
+		let target: Option<Option<Target>> = self.reader.read_value(key, &mut self.diary_reader).unwrap();
 		target.unwrap_or(None)
 	}
 
-	pub fn read(&mut self) -> Option<T> {
-		let key = EchoKey::SayerSubjectShip(Sayer::Unit, Subject::Unit, Ship::Unit);
+	pub fn read(&mut self) -> Option<Target> {
+		let key = EchoKey::SayerSubjectPoint(Sayer::Unit, Subject::Unit, Point::Main);
 		self.target(&key)
 	}
 

@@ -2,7 +2,7 @@ use std::{io, thread};
 use std::error::Error;
 use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
-use crate::{AmpContext, AmpScope, Chamber, Say, Sayer, Ship, Speech, Subject, T};
+use crate::{AmpContext, AmpScope, Chamber, Say, Sayer, Point, Speech, Subject, Target};
 use crate::diary::Diary;
 use crate::hamt::{Hamt, Root};
 use crate::util::io_error;
@@ -22,8 +22,8 @@ enum Action {
 }
 
 impl Echo {
-	pub fn write(&mut self, target: T) -> io::Result<Chamber> {
-		let say = Say { sayer: Sayer::Unit, subject: Subject::Unit, ship: Ship::Unit, target: Some(target) };
+	pub fn write(&mut self, target: Target) -> io::Result<Chamber> {
+		let say = Say { sayer: Sayer::Unit, subject: Subject::Unit, point: Point::Main, target: Some(target) };
 		let speech = Speech { says: vec![say] };
 		self.send_speech(speech)
 	}
@@ -91,7 +91,7 @@ impl Echo {
 
 impl Say {
 	pub(crate) fn as_echo_key(&self) -> EchoKey {
-		EchoKey::SayerSubjectShip(self.sayer.clone(), self.subject.clone(), self.ship.clone())
+		EchoKey::SayerSubjectPoint(self.sayer.clone(), self.subject.clone(), self.point.clone())
 	}
 }
 

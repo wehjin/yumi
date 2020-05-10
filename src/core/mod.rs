@@ -1,5 +1,8 @@
 use std::hash::Hash;
 
+pub use point::*;
+pub use target::*;
+
 use crate::hamt::Key;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -11,8 +14,8 @@ pub(crate) struct Speech {
 pub struct Say {
 	pub sayer: Sayer,
 	pub subject: Subject,
-	pub ship: Ship,
-	pub target: Option<T>,
+	pub point: Point,
+	pub target: Option<Target>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -28,14 +31,18 @@ pub enum Subject {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum Ship {
-	Unit,
-	FieldGroup(String, String),
+pub enum Point {
+	Main,
+	NameAspect(String, String),
 }
 
+mod point;
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum T {
+pub enum Target {
 	Number(u64)
 }
+
+mod target;
 
 impl Key for Subject {}
