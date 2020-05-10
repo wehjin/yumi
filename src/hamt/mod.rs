@@ -6,8 +6,8 @@ pub(crate) use root::*;
 use crate::{diary, hamt};
 use crate::bytes::{ReadBytes, WriteBytes};
 use crate::hamt::hasher::UniversalHasher;
-use crate::hamt::slot_indexer::{SlotIndexer, UniversalSlotPicker};
-use crate::hamt::writer::{WriteContext, Writer};
+use crate::hamt::slot_indexer::UniversalSlotPicker;
+use crate::hamt::writer::Writer;
 
 pub(crate) use self::reader::Reader;
 
@@ -64,22 +64,6 @@ mod tests {
 	impl Key for TestKey {}
 }
 
-impl Reader {
-	pub fn read_value<V: ReadBytes<V>>(&self, key: &impl hamt::Key, diary_reader: &mut diary::Reader) -> io::Result<Option<V>> {
-		let key = key.universal(1);
-		let mut slot_indexer = UniversalSlotPicker::new(key);
-		let value = match self.read(&mut slot_indexer, diary_reader)? {
-			None => None,
-			Some(pos) => {
-				let pos = diary::Pos::at(pos as usize);
-				let value = diary_reader.read::<V>(pos)?;
-				Some(value)
-			}
-		};
-		Ok(value)
-	}
-}
-
 pub(crate) struct Hamt {
 	root: Root,
 }
@@ -97,12 +81,19 @@ impl Hamt {
 	pub fn new(root: Root) -> Self { Hamt { root } }
 }
 
-struct UniversalWriteScope {}
-
-impl WriteContext for UniversalWriteScope {
-	fn slot_indexer(&self, key: u32) -> Box<dyn SlotIndexer> {
-		let universal_indexer = UniversalSlotPicker::new(key);
-		Box::new(universal_indexer)
+impl Reader {
+	pub fn read_value<V: ReadBytes<V>>(&self, key: &impl hamt::Key, diary_reader: &mut diary::Reader) -> io::Result<Option<V>> {
+		let key = key.universal(1);
+		let mut slot_indexer = UniversalSlotPicker::new(key);
+		let value = match self.read(&mut slot_indexer, diary_reader)? {
+			None => None,
+			Some(pos) => {
+				let pos = diary::Pos::at(pos as usize);
+				let value = diary_reader.read::<V>(pos)?;
+				Some(value)
+			}
+		};
+		Ok(value)
 	}
 }
 
