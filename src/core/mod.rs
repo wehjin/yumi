@@ -30,12 +30,6 @@ pub enum Object {
 	Sayer(Sayer),
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum Point {
-	Unit,
-	NameAspect(String, String),
-}
-
 mod point;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
