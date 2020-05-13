@@ -1,9 +1,8 @@
 use std::hash::Hash;
 
+pub use object::*;
 pub use point::*;
 pub use target::*;
-
-use crate::hamt::Key;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct Speech {
@@ -24,12 +23,7 @@ pub enum Sayer {
 	Named(String),
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum Object {
-	Unit,
-	Sayer(Sayer),
-}
-
+mod object;
 mod point;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -39,4 +33,3 @@ pub enum Target {
 
 mod target;
 
-impl Key for Object {}

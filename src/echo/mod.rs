@@ -21,15 +21,15 @@ enum Action {
 }
 
 impl Echo {
-	pub fn unit_comments(&mut self, v: Vec<(&Object, &Point, Target)>) -> io::Result<Chamber> {
-		let says = v.into_iter().map(|(object, point, target)| {
+	pub fn object_attributes(&mut self, object: &Object, attributes: Vec<(&Point, Target)>) -> io::Result<Chamber> {
+		let says = attributes.into_iter().map(|(point, target)| {
 			Say { sayer: Sayer::Unit, object: object.to_owned(), point: point.to_owned(), target: Some(target) }
 		}).collect::<Vec<_>>();
 		self.send_speech(Speech { says })?;
 		self.chamber()
 	}
 
-	pub fn unit_attributes(&mut self, v: Vec<(&Point, Target)>) -> io::Result<Chamber> {
+	pub fn attributes(&mut self, v: Vec<(&Point, Target)>) -> io::Result<Chamber> {
 		let says = v.into_iter().map(|(point, target)| {
 			Say { sayer: Sayer::Unit, object: Object::Unit, point: point.to_owned(), target: Some(target) }
 		}).collect::<Vec<_>>();
@@ -37,7 +37,7 @@ impl Echo {
 		self.chamber()
 	}
 
-	pub fn unit_target(&mut self, target: Target) -> io::Result<Chamber> {
+	pub fn target(&mut self, target: Target) -> io::Result<Chamber> {
 		let say = Say { sayer: Sayer::Unit, object: Object::Unit, point: Point::Unit, target: Some(target) };
 		let speech = Speech { says: vec![say] };
 		self.send_speech(speech)

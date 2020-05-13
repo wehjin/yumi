@@ -2,7 +2,7 @@ use std::io;
 use std::io::{Read, Write};
 use std::ops::Deref;
 
-use crate::{Sayer, Object};
+use crate::Sayer;
 use crate::util::{big_end_first_2, big_end_first_4, big_end_first_8, io_error_of_utf8, u16_of_buf, U32x2, u32x2_of_buf, u64_of_buf};
 
 pub trait WriteBytes {
@@ -11,35 +11,6 @@ pub trait WriteBytes {
 
 pub trait ReadBytes<T> {
 	fn read_bytes(reader: &mut impl Read) -> io::Result<T>;
-}
-
-impl ReadBytes<Object> for Object {
-	fn read_bytes(reader: &mut impl Read) -> io::Result<Self> {
-		match u8::read_bytes(reader)? {
-			0 => Ok(Object::Unit),
-			1 => {
-				let sayer = Sayer::read_bytes(reader)?;
-				Ok(Object::Sayer(sayer))
-			}
-			_ => unimplemented!()
-		}
-	}
-}
-
-impl WriteBytes for Object {
-	fn write_bytes(&self, writer: &mut impl Write) -> io::Result<usize> {
-		match self {
-			Object::Unit => {
-				writer.write_all(&[0])?;
-				Ok(1)
-			}
-			Object::Sayer(sayer) => {
-				writer.write_all(&[1])?;
-				let sayer_size = sayer.write_bytes(writer)?;
-				Ok(1 + sayer_size)
-			}
-		}
-	}
 }
 
 impl ReadBytes<Sayer> for Sayer {

@@ -26,7 +26,7 @@ mod tests {
 	#[test]
 	fn main() -> Result<(), Box<dyn Error>> {
 		let sayer = Sayer::Named("Bob".into());
-		let object = Object::Sayer(sayer.clone());
+		let object = Object::String("A".into());
 		let mut echo = Echo::connect();
 		let mut chamber = echo.chamber()?;
 		let mut new_chamber = echo.batch_write(|ctx| {
@@ -38,13 +38,25 @@ mod tests {
 	}
 
 	#[test]
-	fn unit_attributes() -> Result<(), Box<dyn Error>> {
+	fn object_attributes() -> Result<(), Box<dyn Error>> {
+		let dracula = Object::String("Dracula".into());
 		let mut echo = Echo::connect();
-		let mut chamber = echo.unit_attributes(vec![
+		let mut chamber = echo.object_attributes(&dracula, vec![
+			(&COUNT, Target::Number(3))
+		])?;
+		let attributes = chamber.object_attributes(&dracula, vec![&COUNT])[0];
+		assert_eq!(attributes, (&COUNT, Some(Target::Number(3))));
+		Ok(())
+	}
+
+	#[test]
+	fn attributes() -> Result<(), Box<dyn Error>> {
+		let mut echo = Echo::connect();
+		let mut chamber = echo.attributes(vec![
 			(&MAX_COUNT, Target::Number(100)),
 			(&COUNT, Target::Number(0))
 		])?;
-		let attributes = chamber.unit_attributes(vec![&MAX_COUNT, &COUNT]);
+		let attributes = chamber.attributes(vec![&MAX_COUNT, &COUNT]);
 		assert_eq!(attributes, vec![
 			(&MAX_COUNT, Some(Target::Number(100))),
 			(&COUNT, Some(Target::Number(0)))
@@ -53,12 +65,12 @@ mod tests {
 	}
 
 	#[test]
-	fn unit_target() -> Result<(), Box<dyn Error>> {
+	fn target() -> Result<(), Box<dyn Error>> {
 		let mut echo = Echo::connect();
 		let mut chamber = echo.chamber()?;
-		let mut new_chamber = echo.unit_target(Target::Number(3))?;
-		assert_eq!(new_chamber.unit_target(), Some(Target::Number(3)));
-		assert_eq!(chamber.unit_target(), None);
+		let mut new_chamber = echo.target(Target::Number(3))?;
+		assert_eq!(new_chamber.target(), Some(Target::Number(3)));
+		assert_eq!(chamber.target(), None);
 		Ok(())
 	}
 }
