@@ -18,20 +18,20 @@ pub mod bytes;
 mod tests {
 	use std::error::Error;
 
-	use crate::{Echo, Point, Sayer, Subject, Target};
+	use crate::{Echo, Point, Sayer, Object, Target};
 
 	#[test]
 	fn main() -> Result<(), Box<dyn Error>> {
 		let sayer = Sayer::Named("Bob".into());
-		let subject = Subject::Sayer(sayer.clone());
+		let object = Object::Sayer(sayer.clone());
 		let point = Point::NameAspect("counter".into(), "Count".into());
 		let mut echo = Echo::connect();
 		let mut chamber = echo.chamber()?;
 		let mut new_chamber = echo.batch_write(|ctx| {
-			ctx.say(&sayer, &subject, &point, &Target::Number(3))
+			ctx.say(&sayer, &object, &point, &Target::Number(3))
 		})?;
-		assert_eq!(new_chamber.full_read(&sayer, &subject, &point), Some(Target::Number(3)));
-		assert_eq!(chamber.full_read(&sayer, &subject, &point), None);
+		assert_eq!(new_chamber.full_read(&sayer, &object, &point), Some(Target::Number(3)));
+		assert_eq!(chamber.full_read(&sayer, &object, &point), None);
 		Ok(())
 	}
 
@@ -40,7 +40,7 @@ mod tests {
 		let max_count: Point = ("max_count", "Counter").into();
 		let count: Point = ("count", "Counter").into();
 		let mut echo = Echo::connect();
-		let mut chamber = echo.write_unit_attributes(vec![
+		let mut chamber = echo.unit_attributes(vec![
 			(&max_count, Target::Number(100)),
 			(&count, Target::Number(0))
 		])?;
@@ -56,7 +56,7 @@ mod tests {
 	fn unit_target() -> Result<(), Box<dyn Error>> {
 		let mut echo = Echo::connect();
 		let mut chamber = echo.chamber()?;
-		let mut new_chamber = echo.write_unit_target(Target::Number(3))?;
+		let mut new_chamber = echo.unit_target(Target::Number(3))?;
 		assert_eq!(new_chamber.unit_target(), Some(Target::Number(3)));
 		assert_eq!(chamber.unit_target(), None);
 		Ok(())

@@ -12,17 +12,17 @@ mod diary;
 
 #[cfg(test)]
 mod tests {
-	use crate::{Point, Say, Sayer, Subject, Target};
+	use crate::{Point, Say, Sayer, Object, Target};
 	use crate::diary::{Diary, SayPos};
 
 	#[test]
 	fn main() {
-		let start_say = Say { sayer: Sayer::Unit, subject: Subject::Unit, point: Point::Unit, target: Some(Target::Number(3)) };
+		let start_say = Say { sayer: Sayer::Unit, object: Object::Unit, point: Point::Unit, target: Some(Target::Number(3)) };
 		let (path, pos) = {
 			let diary = Diary::temp().unwrap();
 			let mut writer = diary.writer().unwrap();
 			let pos = writer.write_say(&start_say).unwrap();
-			assert_eq!(pos, SayPos { sayer: 0.into(), subject: 1.into(), point: 2.into(), target: 3.into(), end: (4 + 8).into() });
+			assert_eq!(pos, SayPos { sayer: 0.into(), object: 1.into(), point: 2.into(), target: 3.into(), end: (4 + 8).into() });
 			diary.commit(&writer);
 			let mut commit_reader = diary.reader().unwrap();
 			let commit_say = commit_reader.read_say(pos).unwrap();
@@ -76,7 +76,7 @@ impl Add<Pos> for Pos {
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct SayPos {
 	pub sayer: Pos,
-	pub subject: Pos,
+	pub object: Pos,
 	pub point: Pos,
 	pub target: Pos,
 	pub end: Pos,

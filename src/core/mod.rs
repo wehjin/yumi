@@ -13,7 +13,7 @@ pub(crate) struct Speech {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Say {
 	pub sayer: Sayer,
-	pub subject: Subject,
+	pub object: Object,
 	pub point: Point,
 	pub target: Option<Target>,
 }
@@ -25,7 +25,7 @@ pub enum Sayer {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum Subject {
+pub enum Object {
 	Unit,
 	Sayer(Sayer),
 }
@@ -45,4 +45,4 @@ pub enum Target {
 
 mod target;
 
-impl Key for Subject {}
+impl Key for Object {}

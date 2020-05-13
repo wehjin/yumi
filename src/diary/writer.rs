@@ -45,11 +45,11 @@ impl Writer {
 	fn try_write(&mut self, say: &Say) -> io::Result<SayPos> {
 		let start = self.end_size;
 		let (sayer_start, sayer_size) = self.write(&say.sayer)?;
-		let (subject_start, subject_size) = self.write(&say.subject)?;
+		let (object_start, object_size) = self.write(&say.object)?;
 		let (point_start, point_size) = self.write(&say.point)?;
 		let (target_start, target_size) = self.write(&say.target)?;
-		let end = Pos::at(start + sayer_size + subject_size + point_size + target_size);
-		let say_pos = SayPos { sayer: sayer_start, subject: subject_start, point: point_start, target: target_start, end };
+		let end = Pos::at(start + sayer_size + object_size + point_size + target_size);
+		let say_pos = SayPos { sayer: sayer_start, object: object_start, point: point_start, target: target_start, end };
 		Ok(say_pos)
 	}
 

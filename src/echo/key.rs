@@ -1,23 +1,23 @@
 use std::hash::{Hash, Hasher};
 
-use crate::{hamt, Sayer, Point, Subject};
+use crate::{hamt, Sayer, Point, Object};
 
 #[cfg(test)]
 mod tests {
-	use crate::{Sayer, Point, Subject};
+	use crate::{Sayer, Point, Object};
 	use crate::echo::EchoKey;
 	use crate::hamt::Key;
 
 	#[test]
 	fn hash() {
-		let key = EchoKey::SayerSubjectPoint(Sayer::Unit, Subject::Unit, Point::Unit);
+		let key = EchoKey::SayerObjjectPoint(Sayer::Unit, Object::Unit, Point::Unit);
 		let hash = key.universal(1);
 		assert!(hash < 0x80000000)
 	}
 }
 
 pub enum EchoKey {
-	SayerSubjectPoint(Sayer, Subject, Point)
+	SayerObjjectPoint(Sayer, Object, Point)
 }
 
 impl hamt::Key for EchoKey {}
@@ -25,10 +25,10 @@ impl hamt::Key for EchoKey {}
 impl Hash for EchoKey {
 	fn hash<H: Hasher>(&self, state: &mut H) {
 		match self {
-			EchoKey::SayerSubjectPoint(sayer, subject, point) => {
+			EchoKey::SayerObjjectPoint(sayer, object, point) => {
 				sayer.hash(state);
 				state.write(DIVIDER);
-				subject.hash(state);
+				object.hash(state);
 				state.write(DIVIDER);
 				point.hash(state);
 			}

@@ -1,4 +1,4 @@
-use crate::{diary, Point, Sayer, Subject, Target};
+use crate::{diary, Point, Sayer, Object, Target};
 use crate::echo::EchoKey;
 use crate::hamt::Reader;
 
@@ -8,21 +8,21 @@ pub struct Chamber {
 }
 
 impl Chamber {
-	pub fn full_read(&mut self, sayer: &Sayer, subject: &Subject, point: &Point) -> Option<Target> {
-		let key = EchoKey::SayerSubjectPoint(sayer.clone(), subject.clone(), point.clone());
+	pub fn full_read(&mut self, sayer: &Sayer, object: &Object, point: &Point) -> Option<Target> {
+		let key = EchoKey::SayerObjjectPoint(sayer.clone(), object.clone(), point.clone());
 		self.read(&key)
 	}
 
 	pub fn unit_attributes<'a>(&mut self, vec: Vec<&'a Point>) -> Vec<(&'a Point, Option<Target>)> {
 		vec.into_iter().map(|point| {
-			let key = EchoKey::SayerSubjectPoint(Sayer::Unit, Subject::Unit, point.to_owned());
+			let key = EchoKey::SayerObjjectPoint(Sayer::Unit, Object::Unit, point.to_owned());
 			let target = self.read(&key);
 			(point, target)
 		}).collect()
 	}
 
 	pub fn unit_target(&mut self) -> Option<Target> {
-		let key = EchoKey::SayerSubjectPoint(Sayer::Unit, Subject::Unit, Point::Unit);
+		let key = EchoKey::SayerObjjectPoint(Sayer::Unit, Object::Unit, Point::Unit);
 		self.read(&key)
 	}
 

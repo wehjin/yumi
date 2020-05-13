@@ -1,7 +1,7 @@
 use std::{io, thread};
 use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
-use crate::{AmpContext, AmpScope, Chamber, Point, Say, Sayer, Speech, Subject, Target};
+use crate::{AmpContext, AmpScope, Chamber, Object, Point, Say, Sayer, Speech, Target};
 use crate::diary::Diary;
 use crate::hamt::{Hamt, Root};
 use crate::util::io_error;
@@ -21,17 +21,17 @@ enum Action {
 }
 
 impl Echo {
-	pub fn write_unit_attributes(&mut self, v: Vec<(&Point, Target)>) -> io::Result<Chamber> {
+	pub fn unit_attributes(&mut self, v: Vec<(&Point, Target)>) -> io::Result<Chamber> {
 		for (point, target) in v {
-			let say = Say { sayer: Sayer::Unit, subject: Subject::Unit, point: point.to_owned(), target: Some(target) };
+			let say = Say { sayer: Sayer::Unit, object: Object::Unit, point: point.to_owned(), target: Some(target) };
 			let speech = Speech { says: vec![say] };
 			self.send_speech(speech)?;
 		}
 		self.chamber()
 	}
 
-	pub fn write_unit_target(&mut self, target: Target) -> io::Result<Chamber> {
-		let say = Say { sayer: Sayer::Unit, subject: Subject::Unit, point: Point::Unit, target: Some(target) };
+	pub fn unit_target(&mut self, target: Target) -> io::Result<Chamber> {
+		let say = Say { sayer: Sayer::Unit, object: Object::Unit, point: Point::Unit, target: Some(target) };
 		let speech = Speech { says: vec![say] };
 		self.send_speech(speech)
 	}
@@ -95,7 +95,7 @@ impl Echo {
 
 impl Say {
 	pub(crate) fn as_echo_key(&self) -> EchoKey {
-		EchoKey::SayerSubjectPoint(self.sayer.clone(), self.subject.clone(), self.point.clone())
+		EchoKey::SayerObjjectPoint(self.sayer.clone(), self.object.clone(), self.point.clone())
 	}
 }
 
