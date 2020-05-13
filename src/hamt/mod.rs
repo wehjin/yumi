@@ -65,7 +65,7 @@ mod tests {
 }
 
 pub(crate) struct Hamt {
-	root: Root,
+	pub root: Root,
 }
 
 impl Hamt {

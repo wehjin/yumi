@@ -3,7 +3,7 @@ use std::io;
 use std::io::{Seek, SeekFrom};
 use std::path::Path;
 
-use crate::{diary, Point, Say, Object, Target};
+use crate::{diary, Object, Point, Say, Target};
 use crate::bytes::ReadBytes;
 use crate::Sayer;
 
@@ -17,8 +17,8 @@ impl Reader {
 		let sayer = self.read::<Sayer>(pos.sayer)?;
 		let object = self.read::<Object>(pos.object)?;
 		let point = self.read::<Point>(pos.point)?;
-		let target = self.read::<Option<Target>>(pos.target)?;
-		let say = Say { sayer, object, point, target };
+		let target = self.read::<Target>(pos.target)?;
+		let say = Say { sayer, object, point, target: Some(target) };
 		Ok(say)
 	}
 

@@ -2,6 +2,7 @@ use std::io::{Read, Write};
 use std::io;
 
 use crate::bytes::{ReadBytes, WriteBytes};
+use crate::hamt::Key;
 
 #[derive(Debug, Clone, Eq, Hash)]
 pub enum Point {
@@ -9,6 +10,8 @@ pub enum Point {
 	String { name: String, aspect: String },
 	Static { name: &'static str, aspect: &'static str },
 }
+
+impl Key for Point {}
 
 impl Default for Point {
 	fn default() -> Self { Point::Unit }

@@ -1,14 +1,10 @@
 use std::{io, thread};
 use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
-use crate::{AmpContext, AmpScope, Chamber, Object, Point, Say, Sayer, Speech, Target};
+use crate::{AmpContext, AmpScope, Chamber, diary, Object, Point, Say, Sayer, Speech, Target};
 use crate::diary::Diary;
 use crate::hamt::{Hamt, Root};
 use crate::util::io_error;
-
-pub use self::key::*;
-
-mod key;
 
 #[derive(Debug, Clone)]
 pub struct Echo {
@@ -61,30 +57,27 @@ impl Echo {
 
 	pub fn connect() -> Echo {
 		let (tx, rx) = sync_channel::<Action>(64);
-		let echo = Echo { tx };
 		thread::spawn(move || {
 			let diary = Diary::temp().unwrap();
 			let mut diary_writer = diary.writer().unwrap();
-			let mut hamt2 = Hamt::new(Root::ZERO);
+			let mut object_points = Hamt::new(Root::ZERO);
 			for action in rx {
 				match action {
 					Action::Speech(speech, tx) => {
-						// TODO Deal with reader and write unwraps.
-						for say in speech.says {
-							let key = say.as_echo_key();
-							hamt2.write_value(&key, &say.target, &mut diary_writer).unwrap();
-						}
-						diary.commit(diary_writer.end_size());
-						let chamber = Chamber {
-							reader: hamt2.reader().unwrap(),
-							diary_reader: diary.reader().unwrap(),
-						};
-						tx.send(Ok(chamber)).unwrap();
+						let chamber: io::Result<Chamber> = speech.says.into_iter()
+							.map(|say| write_say(&say, &mut object_points, &mut diary_writer))
+							.collect::<io::Result<Vec<_>>>()
+							.and_then(|_| {
+								diary.commit(diary_writer.end_size());
+								Ok(())
+							})
+							.and_then(|_| chamber(&object_points, &diary));
+						tx.send(chamber).unwrap();
 					}
 					Action::Latest(tx) => {
 						// TODO Deal with reader unwrap.
 						let chamber = Chamber {
-							reader: hamt2.reader().unwrap(),
+							reader: object_points.reader().unwrap(),
 							diary_reader: diary.reader().unwrap(),
 						};
 						tx.send(chamber).unwrap();
@@ -92,13 +85,29 @@ impl Echo {
 				}
 			}
 		});
-		echo
+		Echo { tx }
 	}
 }
 
-impl Say {
-	pub(crate) fn as_echo_key(&self) -> EchoKey {
-		EchoKey::SayerObjjectPoint(self.sayer.clone(), self.object.clone(), self.point.clone())
-	}
+fn chamber(object_points: &Hamt, diary: &Diary) -> io::Result<Chamber> {
+	let reader = object_points.reader()?;
+	let diary_reader = diary.reader()?;
+	let chamber = Chamber { reader, diary_reader };
+	Ok(chamber)
 }
 
+fn write_say(say: &Say, object_points: &mut Hamt, diary_writer: &mut diary::Writer) -> io::Result<()> {
+	let mut diary_reader = diary_writer.reader()?;
+	let points_root = match object_points.reader()?.read_value(&say.object, &mut diary_reader)? {
+		None => Root::ZERO,
+		Some(root) => root
+	};
+	let mut point_targets = Hamt::new(points_root);
+	let target = match say.target {
+		None => unimplemented!(),
+		Some(it) => it,
+	};
+	point_targets.write_value(&say.point, &target, diary_writer)?;
+	object_points.write_value(&say.object, &point_targets.root, diary_writer)?;
+	Ok(())
+}

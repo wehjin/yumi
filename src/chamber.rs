@@ -1,6 +1,7 @@
-use crate::{diary, Object, Point, Sayer, Target};
-use crate::echo::EchoKey;
-use crate::hamt::Reader;
+use std::io;
+
+use crate::{diary, Object, Point, Target};
+use crate::hamt::{Hamt, Reader};
 
 pub struct Chamber {
 	pub(crate) reader: Reader,
@@ -8,15 +9,9 @@ pub struct Chamber {
 }
 
 impl Chamber {
-	pub fn full_read(&mut self, sayer: &Sayer, object: &Object, point: &Point) -> Option<Target> {
-		let key = EchoKey::SayerObjjectPoint(sayer.clone(), object.clone(), point.clone());
-		self.read(&key)
-	}
-
 	pub fn object_attributes<'a>(&mut self, object: &'a Object, points: Vec<&'a Point>) -> Vec<(&'a Point, Option<Target>)> {
 		points.into_iter().map(|point| {
-			let key = EchoKey::SayerObjjectPoint(Sayer::Unit, object.to_owned(), point.to_owned());
-			let target = self.read(&key);
+			let target = self.read_target(object, point).unwrap_or(None);
 			(point, target)
 		}).collect()
 	}
@@ -26,12 +21,16 @@ impl Chamber {
 	}
 
 	pub fn target(&mut self) -> Option<Target> {
-		let key = EchoKey::SayerObjjectPoint(Sayer::Unit, Object::Unit, Point::Unit);
-		self.read(&key)
+		self.read_target(&Object::Unit, &Point::Unit).unwrap_or(None)
 	}
 
-	fn read(&mut self, key: &EchoKey) -> Option<Target> {
-		let target: Option<Option<Target>> = self.reader.read_value(key, &mut self.diary_reader).unwrap();
-		target.unwrap_or(None)
+	fn read_target(&mut self, object: &Object, point: &Point) -> io::Result<Option<Target>> {
+		match self.reader.read_value(object, &mut self.diary_reader).unwrap_or(None) {
+			None => Ok(None),
+			Some(root) => {
+				let point_targets = Hamt::new(root);
+				point_targets.reader()?.read_value(point, &mut self.diary_reader)
+			}
+		}
 	}
 }
