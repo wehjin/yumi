@@ -21,12 +21,8 @@ impl Chamber {
 		}).collect()
 	}
 
-	pub fn attributes<'a>(&mut self, vec: Vec<&'a Point>) -> Vec<(&'a Point, Option<Target>)> {
-		vec.into_iter().map(|point| {
-			let key = EchoKey::SayerObjjectPoint(Sayer::Unit, Object::Unit, point.to_owned());
-			let target = self.read(&key);
-			(point, target)
-		}).collect()
+	pub fn attributes<'a>(&mut self, points: Vec<&'a Point>) -> Vec<(&'a Point, Option<Target>)> {
+		self.object_attributes(&Object::Unit, points)
 	}
 
 	pub fn target(&mut self) -> Option<Target> {

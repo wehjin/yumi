@@ -29,12 +29,8 @@ impl Echo {
 		self.chamber()
 	}
 
-	pub fn attributes(&mut self, v: Vec<(&Point, Target)>) -> io::Result<Chamber> {
-		let says = v.into_iter().map(|(point, target)| {
-			Say { sayer: Sayer::Unit, object: Object::Unit, point: point.to_owned(), target: Some(target) }
-		}).collect::<Vec<_>>();
-		self.send_speech(Speech { says })?;
-		self.chamber()
+	pub fn attributes(&mut self, attributes: Vec<(&Point, Target)>) -> io::Result<Chamber> {
+		self.object_attributes(&Object::Unit, attributes)
 	}
 
 	pub fn target(&mut self, target: Target) -> io::Result<Chamber> {
