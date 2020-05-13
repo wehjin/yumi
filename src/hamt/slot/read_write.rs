@@ -1,11 +1,7 @@
 use std::io;
-use std::io::{Read, Write};
 
-use crate::bytes::{ReadBytes, WriteBytes};
 use crate::diary;
-use crate::hamt::Root;
 use crate::hamt::slot::Slot;
-use crate::util::{clr_high_bit, is_high_bit_set, set_high_bit};
 
 #[cfg(test)]
 mod tests {
@@ -65,24 +61,6 @@ impl<'a> Reader<'a> {
 	}
 }
 
-impl ReadBytes<Slot> for Slot {
-	fn read_bytes(reader: &mut impl Read) -> io::Result<Self> {
-		let (a, b) = U32x2::read_bytes(reader)?;
-		let slot = if is_high_bit_set(a) {
-			let root = Root {
-				pos: clr_high_bit(a),
-				mask: b,
-			};
-			Slot::Root(root)
-		} else {
-			Slot::KeyValue(a, b)
-		};
-		Ok(slot)
-	}
-}
-
-type U32x2 = (u32, u32);
-
 pub(crate) struct Writer<'a> {
 	diary_writer: &'a mut diary::Writer
 }
@@ -92,32 +70,6 @@ impl<'a> Writer<'a> {
 		self.diary_writer.write(slot)
 	}
 	pub fn new(diary_writer: &'a mut diary::Writer) -> Self { Writer { diary_writer } }
-}
-
-impl WriteBytes for Slot {
-	fn write_bytes(&self, writer: &mut impl Write) -> io::Result<usize> {
-		let bytes = match self {
-			Slot::Empty => panic!("write_bytes called on empty slot"),
-			Slot::KeyValue(key, value) => {
-				debug_assert!(!is_high_bit_set(*key));
-				let key_bytes = key.write_bytes(writer)?;
-				let val_bytes = value.write_bytes(writer)?;
-				key_bytes + val_bytes
-			}
-			Slot::Root(root) => root.write_bytes(writer)?,
-		};
-		assert_eq!(bytes, SLOT_LEN);
-		Ok(bytes)
-	}
-}
-
-impl WriteBytes for Root {
-	fn write_bytes(&self, writer: &mut impl Write) -> io::Result<usize> {
-		debug_assert!(!is_high_bit_set(self.pos));
-		let pos_bytes = set_high_bit(self.pos).write_bytes(writer)?;
-		let mask_bytes = self.mask.write_bytes(writer)?;
-		Ok(pos_bytes + mask_bytes)
-	}
 }
 
 pub(crate) static SLOT_LEN: usize = 8;

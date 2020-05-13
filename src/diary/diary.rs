@@ -14,12 +14,8 @@ impl Diary {
 	pub fn reader(&self) -> io::Result<Reader> {
 		Reader::new(&self.file_path, self.file_size.get())
 	}
-	pub fn commit2(&self, size: usize) {
+	pub fn commit(&self, size: usize) {
 		self.file_size.set(size);
-	}
-	pub fn commit(&self, writer: &Writer) {
-		let end_size = writer.end_size();
-		self.commit2(end_size);
 	}
 	pub fn writer(&self) -> io::Result<Writer> {
 		Writer::new(&self.file_path, self.file_size.get())

@@ -85,7 +85,7 @@ mod tests {
 		for (slot_indexer, value) in tasks {
 			writer.write(value, slot_indexer)?;
 		}
-		diary.commit2(writer.end_size());
+		diary.commit(writer.end_size());
 		Ok((writer.root, diary.file_path.to_owned()))
 	}
 }

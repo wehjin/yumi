@@ -74,7 +74,7 @@ impl Echo {
 							let key = say.as_echo_key();
 							hamt2.write_value(&key, &say.target, &mut diary_writer).unwrap();
 						}
-						diary.commit2(diary_writer.end_size());
+						diary.commit(diary_writer.end_size());
 						let chamber = Chamber {
 							reader: hamt2.reader().unwrap(),
 							diary_reader: diary.reader().unwrap(),
