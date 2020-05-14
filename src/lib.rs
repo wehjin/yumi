@@ -24,6 +24,18 @@ mod tests {
 	const MAX_COUNT: Point = Point::Static { name: "max_count", aspect: "Counter" };
 
 	#[test]
+	fn objects_with_point() -> Result<(), Box<dyn Error>> {
+		let dracula = Object::String("Dracula".into());
+		let bo_peep = Object::String("Bo Peep".into());
+		let mut echo = Echo::connect();
+		echo.object_attributes(&dracula, vec![(&COUNT, Target::Number(3)), ])?;
+		echo.object_attributes(&bo_peep, vec![(&COUNT, Target::Number(7)), ])?;
+		let objects = echo.chamber()?.objects_with_point(&COUNT)?;
+		assert_eq!(objects, vec![dracula, bo_peep].into_iter().collect());
+		Ok(())
+	}
+
+	#[test]
 	fn object_attributes() -> Result<(), Box<dyn Error>> {
 		let dracula = Object::String("Dracula".into());
 		let mut echo = Echo::connect();

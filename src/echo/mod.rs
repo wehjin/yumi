@@ -3,7 +3,7 @@ use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
 use crate::{AmpContext, AmpScope, Chamber, diary, Object, Point, Say, Sayer, Speech, Target};
 use crate::diary::Diary;
-use crate::hamt::{Hamt, Root};
+use crate::hamt::{Hamt, ProdAB, Root};
 use crate::util::io_error;
 
 #[derive(Debug, Clone)]
@@ -61,25 +61,20 @@ impl Echo {
 			let diary = Diary::temp().unwrap();
 			let mut diary_writer = diary.writer().unwrap();
 			let mut object_points = Hamt::new(Root::ZERO);
+			let mut point_objects = Hamt::new(Root::ZERO);
 			for action in rx {
 				match action {
 					Action::Speech(speech, tx) => {
 						let chamber: io::Result<Chamber> = speech.says.into_iter()
-							.map(|say| write_say(&say, &mut object_points, &mut diary_writer))
+							.map(|say| write_say(&say, &mut point_objects, &mut object_points, &mut diary_writer))
 							.collect::<io::Result<Vec<_>>>()
-							.and_then(|_| {
-								diary.commit(diary_writer.end_size());
-								Ok(())
-							})
-							.and_then(|_| chamber(&object_points, &diary));
+							.and_then(|_| Ok(diary.commit(diary_writer.end_size())))
+							.and_then(|_| chamber(&point_objects, &object_points, &diary));
 						tx.send(chamber).unwrap();
 					}
 					Action::Latest(tx) => {
 						// TODO Deal with reader unwrap.
-						let chamber = Chamber {
-							reader: object_points.reader().unwrap(),
-							diary_reader: diary.reader().unwrap(),
-						};
+						let chamber = chamber(&point_objects, &object_points, &diary).unwrap();
 						tx.send(chamber).unwrap();
 					}
 				}
@@ -89,25 +84,46 @@ impl Echo {
 	}
 }
 
-fn chamber(object_points: &Hamt, diary: &Diary) -> io::Result<Chamber> {
-	let reader = object_points.reader()?;
+fn chamber(point_objects: &Hamt, object_points: &Hamt, diary: &Diary) -> io::Result<Chamber> {
+	let object_points_reader = object_points.reader()?;
+	let point_objects_reader = point_objects.reader()?;
 	let diary_reader = diary.reader()?;
-	let chamber = Chamber { reader, diary_reader };
+	let chamber = Chamber { point_objects_reader, object_points_reader, diary_reader };
 	Ok(chamber)
 }
 
-fn write_say(say: &Say, object_points: &mut Hamt, diary_writer: &mut diary::Writer) -> io::Result<()> {
+fn write_say(say: &Say, point_objects: &mut Hamt, object_points: &mut Hamt, diary_writer: &mut diary::Writer) -> io::Result<()> {
 	let mut diary_reader = diary_writer.reader()?;
-	let points_root = match object_points.reader()?.read_value(&say.object, &mut diary_reader)? {
+	write_object_points(&say, object_points, diary_writer, &mut diary_reader)?;
+	write_point_objects(&say, point_objects, diary_writer, &mut diary_reader)?;
+	Ok(())
+}
+
+fn write_point_objects(say: &Say, point_objects: &mut Hamt, diary_writer: &mut diary::Writer, mut diary_reader: &mut diary::Reader) -> io::Result<()> {
+	let object_targets_root = match point_objects.reader()?.read_value(&say.point, &mut diary_reader)? {
 		None => Root::ZERO,
-		Some(root) => root
+		Some(it) => it
 	};
-	let mut point_targets = Hamt::new(points_root);
+	let mut object_targets = Hamt::new(object_targets_root);
+	let target = match say.target {
+		None => unimplemented!(),
+		Some(it) => it,
+	};
+	let object_target = ProdAB { a: say.object.to_owned(), b: target };
+	object_targets.write_value(&say.object, &object_target, diary_writer)?;
+	point_objects.write_value(&say.point, &object_targets.root, diary_writer)
+}
+
+fn write_object_points(say: &Say, object_points: &mut Hamt, diary_writer: &mut diary::Writer, mut diary_reader: &mut diary::Reader) -> io::Result<()> {
+	let point_targets_root = match object_points.reader()?.read_value(&say.object, &mut diary_reader)? {
+		None => Root::ZERO,
+		Some(it) => it,
+	};
+	let mut point_targets = Hamt::new(point_targets_root);
 	let target = match say.target {
 		None => unimplemented!(),
 		Some(it) => it,
 	};
 	point_targets.write_value(&say.point, &target, diary_writer)?;
-	object_points.write_value(&say.object, &point_targets.root, diary_writer)?;
-	Ok(())
+	object_points.write_value(&say.object, &point_targets.root, diary_writer)
 }

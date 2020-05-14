@@ -28,7 +28,7 @@ mod tests {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub(crate) struct Reader {
-	root: Root,
+	pub root: Root,
 }
 
 impl Reader {

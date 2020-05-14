@@ -5,7 +5,9 @@ pub(crate) use root::*;
 
 use crate::{diary, hamt};
 use crate::bytes::{ReadBytes, WriteBytes};
+use crate::hamt::frame::SlotIndex;
 use crate::hamt::hasher::UniversalHasher;
+use crate::hamt::slot::Slot;
 use crate::hamt::slot_indexer::UniversalSlotPicker;
 use crate::hamt::writer::Writer;
 
@@ -82,6 +84,29 @@ impl Hamt {
 }
 
 impl Reader {
+	pub fn read_all<V: ReadBytes<V>>(&self, diary_reader: &mut diary::Reader) -> io::Result<Vec<V>> {
+		let mut positions = Vec::new();
+		{
+			let mut roots = vec![self.root];
+			loop {
+				match roots.pop() {
+					None => break,
+					Some(root) => for n in SlotIndex::RANGE {
+						match self.read_slot(root, SlotIndex::at(n), diary_reader)? {
+							Slot::Empty => (),
+							Slot::KeyValue(_, value) => positions.push(value),
+							Slot::Root(root) => roots.push(root),
+						}
+					},
+				}
+			}
+		}
+		let values = positions.into_iter()
+			.map(|it| diary_reader.read::<V>(diary::Pos::at(it as usize)))
+			.collect();
+		values
+	}
+
 	pub fn read_value<V: ReadBytes<V>>(&self, key: &impl hamt::Key, diary_reader: &mut diary::Reader) -> io::Result<Option<V>> {
 		let key = key.universal(1);
 		let mut slot_indexer = UniversalSlotPicker::new(key);
