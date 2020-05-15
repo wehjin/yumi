@@ -81,12 +81,15 @@ mod tests {
 	fn write_values(root: Root, tasks: Vec<(&mut impl SlotIndexer, u32)>) -> io::Result<(Root, PathBuf)> {
 		let diary = Diary::temp()?;
 		let mut diary_writer = diary.writer()?;
-		let mut writer = Writer::new(root, &mut diary_writer);
-		for (slot_indexer, value) in tasks {
-			writer.write(value, slot_indexer)?;
-		}
-		diary.commit(writer.end_size());
-		Ok((writer.root, diary.file_path.to_owned()))
+		let new_root = {
+			let mut writer = Writer::new(root, &mut diary_writer);
+			for (slot_indexer, value) in tasks {
+				writer.write(value, slot_indexer)?;
+			}
+			writer.root
+		};
+		diary.commit(diary_writer.end_size());
+		Ok((new_root, diary.file_path.to_owned()))
 	}
 }
 
@@ -197,10 +200,6 @@ impl<'a> Writer<'a> {
 		}
 		self.root = current_root;
 		Ok(self.root)
-	}
-
-	pub fn end_size(&self) -> usize {
-		self.diary_writer.end_size()
 	}
 	pub fn new(root: Root, diary_writer: &'a mut diary::Writer) -> Self { Writer { root, diary_writer } }
 }

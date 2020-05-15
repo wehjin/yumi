@@ -1,7 +1,7 @@
 use std::{io, thread};
 use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
-use crate::{AmpContext, AmpScope, Chamber, diary, ObjName, Point, Say, Sayer, Speech, Target};
+use crate::{Chamber, diary, ObjName, Point, Say, Sayer, Speech, Target};
 use crate::diary::Diary;
 use crate::hamt::{Hamt, ProdAB, Root};
 use crate::util::io_error;
@@ -16,29 +16,36 @@ enum Action {
 	Latest(Sender<Chamber>),
 }
 
-impl Echo {
-	pub fn object_attributes(&mut self, object: &ObjName, attributes: Vec<(&Point, Target)>) -> io::Result<Chamber> {
-		let says = attributes.into_iter().map(|(point, target)| {
-			Say { sayer: Sayer::Unit, object: object.to_owned(), point: point.to_owned(), target: Some(target) }
-		}).collect::<Vec<_>>();
-		self.send_speech(Speech { says })?;
-		self.chamber()
-	}
+pub trait Shout {
+	fn object_attributes(&mut self, object: &ObjName, attributes: Vec<(&Point, Target)>);
 
-	pub fn attributes(&mut self, attributes: Vec<(&Point, Target)>) -> io::Result<Chamber> {
+	fn attributes(&mut self, attributes: Vec<(&Point, Target)>) {
 		self.object_attributes(&ObjName::Unit, attributes)
 	}
-
-	pub fn target(&mut self, target: Target) -> io::Result<Chamber> {
-		let say = Say { sayer: Sayer::Unit, object: ObjName::Unit, point: Point::Unit, target: Some(target) };
-		let speech = Speech { says: vec![say] };
-		self.send_speech(speech)
+	fn target(&mut self, target: Target) {
+		self.attributes(vec![(&Point::Unit, target)])
 	}
+}
 
-	pub fn batch_write(&mut self, f: impl FnOnce(&mut dyn AmpContext) -> ()) -> io::Result<Chamber> {
-		let mut amp = AmpScope { says: Vec::new() };
-		f(&mut amp);
-		self.send_speech(amp.speech())
+struct EchoShout {
+	says: Vec<Say>
+}
+
+impl Shout for EchoShout {
+	fn object_attributes(&mut self, object: &ObjName, attributes: Vec<(&Point, Target)>) {
+		for (point, target) in attributes {
+			let say = Say { sayer: Sayer::Unit, object: object.to_owned(), point: point.to_owned(), target: Some(target) };
+			self.says.push(say)
+		}
+	}
+}
+
+impl Echo {
+	pub fn shout(&mut self, f: impl Fn(&mut dyn Shout)) -> io::Result<()> {
+		let mut shout = EchoShout { says: Vec::new() };
+		f(&mut shout);
+		self.send_speech(Speech { says: shout.says })?;
+		Ok(())
 	}
 
 	fn send_speech(&mut self, speech: Speech) -> io::Result<Chamber> {

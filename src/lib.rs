@@ -1,11 +1,9 @@
 extern crate rand;
 
-pub use self::beam::*;
 pub use self::chamber::*;
 pub use self::core::*;
 pub use self::echo::Echo;
 
-mod beam;
 mod chamber;
 mod core;
 mod echo;
@@ -28,8 +26,10 @@ mod tests {
 		let dracula = ObjName::new("Dracula");
 		let bo_peep = ObjName::new("Bo Peep");
 		let mut echo = Echo::connect();
-		echo.object_attributes(&dracula, vec![(&COUNT, Target::Number(3)), ])?;
-		echo.object_attributes(&bo_peep, vec![(&COUNT, Target::Number(7)), ])?;
+		echo.shout(|shout| {
+			shout.object_attributes(&dracula, vec![(&COUNT, Target::Number(3)), ]);
+			shout.object_attributes(&bo_peep, vec![(&COUNT, Target::Number(7)), ]);
+		})?;
 		let objects = echo.chamber()?.objects_with_point(&COUNT)?;
 		assert_eq!(objects, vec![dracula, bo_peep].into_iter().collect());
 		Ok(())
@@ -39,10 +39,10 @@ mod tests {
 	fn object_attributes() -> Result<(), Box<dyn Error>> {
 		let dracula = ObjName::String("Dracula".into());
 		let mut echo = Echo::connect();
-		let mut chamber = echo.object_attributes(&dracula, vec![
-			(&COUNT, Target::Number(3))
-		])?;
-		let attributes = chamber.object_attributes(&dracula, vec![&COUNT])[0];
+		echo.shout(|shout| {
+			shout.object_attributes(&dracula, vec![(&COUNT, Target::Number(3))]);
+		})?;
+		let attributes = echo.chamber()?.object_attributes(&dracula, vec![&COUNT])[0];
 		assert_eq!(attributes, (&COUNT, Some(Target::Number(3))));
 		Ok(())
 	}
@@ -50,11 +50,13 @@ mod tests {
 	#[test]
 	fn attributes() -> Result<(), Box<dyn Error>> {
 		let mut echo = Echo::connect();
-		let mut chamber = echo.attributes(vec![
-			(&MAX_COUNT, Target::Number(100)),
-			(&COUNT, Target::Number(0))
-		])?;
-		let attributes = chamber.attributes(vec![&MAX_COUNT, &COUNT]);
+		echo.shout(|shout| {
+			shout.attributes(vec![
+				(&MAX_COUNT, Target::Number(100)),
+				(&COUNT, Target::Number(0))
+			]);
+		})?;
+		let attributes = echo.chamber()?.attributes(vec![&MAX_COUNT, &COUNT]);
 		assert_eq!(attributes, vec![
 			(&MAX_COUNT, Some(Target::Number(100))),
 			(&COUNT, Some(Target::Number(0)))
@@ -65,10 +67,13 @@ mod tests {
 	#[test]
 	fn target() -> Result<(), Box<dyn Error>> {
 		let mut echo = Echo::connect();
-		let mut chamber = echo.chamber()?;
-		let mut new_chamber = echo.target(Target::Number(3))?;
+		let mut old_chamber = echo.chamber()?;
+		echo.shout(|write| {
+			write.target(Target::Number(3))
+		})?;
+		let mut new_chamber = echo.chamber()?;
 		assert_eq!(new_chamber.target(), Some(Target::Number(3)));
-		assert_eq!(chamber.target(), None);
+		assert_eq!(old_chamber.target(), None);
 		Ok(())
 	}
 }
