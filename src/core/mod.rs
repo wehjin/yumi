@@ -12,7 +12,7 @@ pub(crate) struct Speech {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Say {
 	pub sayer: Sayer,
-	pub object: Object,
+	pub object: ObjName,
 	pub point: Point,
 	pub target: Option<Target>,
 }

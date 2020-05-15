@@ -18,15 +18,15 @@ pub mod bytes;
 mod tests {
 	use std::error::Error;
 
-	use crate::{Echo, Object, Point, Target};
+	use crate::{Echo, ObjName, Point, Target};
 
 	const COUNT: Point = Point::Static { name: "count", aspect: "Counter" };
 	const MAX_COUNT: Point = Point::Static { name: "max_count", aspect: "Counter" };
 
 	#[test]
 	fn objects_with_point() -> Result<(), Box<dyn Error>> {
-		let dracula = Object::String("Dracula".into());
-		let bo_peep = Object::String("Bo Peep".into());
+		let dracula = ObjName::new("Dracula");
+		let bo_peep = ObjName::new("Bo Peep");
 		let mut echo = Echo::connect();
 		echo.object_attributes(&dracula, vec![(&COUNT, Target::Number(3)), ])?;
 		echo.object_attributes(&bo_peep, vec![(&COUNT, Target::Number(7)), ])?;
@@ -37,7 +37,7 @@ mod tests {
 
 	#[test]
 	fn object_attributes() -> Result<(), Box<dyn Error>> {
-		let dracula = Object::String("Dracula".into());
+		let dracula = ObjName::String("Dracula".into());
 		let mut echo = Echo::connect();
 		let mut chamber = echo.object_attributes(&dracula, vec![
 			(&COUNT, Target::Number(3))

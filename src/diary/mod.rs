@@ -12,12 +12,12 @@ mod diary;
 
 #[cfg(test)]
 mod tests {
-	use crate::{Point, Say, Sayer, Object, Target};
+	use crate::{Point, Say, Sayer, ObjName, Target};
 	use crate::diary::{Diary, SayPos};
 
 	#[test]
 	fn main() {
-		let start_say = Say { sayer: Sayer::Unit, object: Object::Unit, point: Point::Unit, target: Some(Target::Number(3)) };
+		let start_say = Say { sayer: Sayer::Unit, object: ObjName::Unit, point: Point::Unit, target: Some(Target::Number(3)) };
 		let (path, pos) = {
 			let diary = Diary::temp().unwrap();
 			let mut writer = diary.writer().unwrap();
