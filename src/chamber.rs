@@ -11,7 +11,7 @@ pub struct Chamber {
 }
 
 impl Chamber {
-	pub fn objects_with_point(&mut self, point: &Point) -> io::Result<HashSet<ObjName>> {
+	pub fn objects_with_point(&mut self, point: &Point) -> io::Result<Vec<ObjName>> {
 		let objects_root: Option<Root> = self.point_objects_reader.read_value(point, &mut self.diary_reader)?;
 		let objects = match objects_root {
 			None => Vec::new(),
@@ -21,7 +21,7 @@ impl Chamber {
 				object_target.into_iter().map(|it| it.a).collect()
 			}
 		};
-		Ok(objects.into_iter().collect())
+		Ok(objects)
 	}
 
 	pub fn object_attributes<'a>(&mut self, object: &'a ObjName, points: Vec<&'a Point>) -> Vec<(&'a Point, Option<Target>)> {

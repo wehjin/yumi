@@ -4,7 +4,7 @@ use std::io;
 use crate::bytes::{ReadBytes, WriteBytes};
 use crate::hamt::Key;
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum ObjName {
 	Unit,
 	String(String),

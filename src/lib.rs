@@ -30,8 +30,9 @@ mod tests {
 			shout.object_attributes(&dracula, vec![(&COUNT, Target::Number(3)), ]);
 			shout.object_attributes(&bo_peep, vec![(&COUNT, Target::Number(7)), ]);
 		})?;
-		let objects = echo.chamber()?.objects_with_point(&COUNT)?;
-		assert_eq!(objects, vec![dracula, bo_peep].into_iter().collect());
+		let mut objects = echo.chamber()?.objects_with_point(&COUNT)?;
+		objects.sort();
+		assert_eq!(objects, vec![bo_peep, dracula]);
 		Ok(())
 	}
 
