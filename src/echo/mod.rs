@@ -62,10 +62,14 @@ impl Echo {
 		rx.recv().map_err(io_error)
 	}
 
-	pub fn connect() -> Echo {
+	pub fn connect_temp() -> Self {
+		let diary = Diary::temp().unwrap();
+		Self::connect(diary)
+	}
+
+	pub fn connect(diary: Diary) -> Self {
 		let (tx, rx) = sync_channel::<Action>(64);
 		thread::spawn(move || {
-			let diary = Diary::temp().unwrap();
 			let mut diary_writer = diary.writer().unwrap();
 			let mut object_points = Hamt::new(Root::ZERO);
 			let mut point_objects = Hamt::new(Root::ZERO);

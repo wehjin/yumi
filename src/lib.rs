@@ -25,7 +25,7 @@ mod tests {
 	fn objects_with_point() -> Result<(), Box<dyn Error>> {
 		let dracula = ObjName::new("Dracula");
 		let bo_peep = ObjName::new("Bo Peep");
-		let mut echo = Echo::connect();
+		let mut echo = Echo::connect_temp();
 		echo.shout(|shout| {
 			shout.object_attributes(&dracula, vec![(&COUNT, Target::Number(3)), ]);
 			shout.object_attributes(&bo_peep, vec![(&COUNT, Target::Number(7)), ]);
@@ -39,7 +39,7 @@ mod tests {
 	#[test]
 	fn object_attributes() -> Result<(), Box<dyn Error>> {
 		let dracula = ObjName::String("Dracula".into());
-		let mut echo = Echo::connect();
+		let mut echo = Echo::connect_temp();
 		echo.shout(|shout| {
 			shout.object_attributes(&dracula, vec![(&COUNT, Target::Number(3))]);
 		})?;
@@ -50,7 +50,7 @@ mod tests {
 
 	#[test]
 	fn attributes() -> Result<(), Box<dyn Error>> {
-		let mut echo = Echo::connect();
+		let mut echo = Echo::connect_temp();
 		echo.shout(|shout| {
 			shout.attributes(vec![
 				(&MAX_COUNT, Target::Number(100)),
@@ -67,7 +67,7 @@ mod tests {
 
 	#[test]
 	fn target() -> Result<(), Box<dyn Error>> {
-		let mut echo = Echo::connect();
+		let mut echo = Echo::connect_temp();
 		let mut old_chamber = echo.chamber()?;
 		echo.shout(|write| {
 			write.target(Target::Number(3))
