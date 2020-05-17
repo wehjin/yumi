@@ -20,7 +20,7 @@ enum Action {
 	Latest(Sender<Chamber>),
 }
 
-pub trait Shout {
+pub trait WriteScope {
 	fn object_attributes(&mut self, object: &ObjName, attributes: Vec<(&Point, Target)>);
 
 	fn attributes(&mut self, attributes: Vec<(&Point, Target)>) {
@@ -31,11 +31,11 @@ pub trait Shout {
 	}
 }
 
-struct EchoShout {
+struct WriteContext {
 	says: Vec<Say>
 }
 
-impl Shout for EchoShout {
+impl WriteScope for WriteContext {
 	fn object_attributes(&mut self, object: &ObjName, attributes: Vec<(&Point, Target)>) {
 		for (point, target) in attributes {
 			let say = Say { sayer: Sayer::Unit, object: object.to_owned(), point: point.to_owned(), target: Some(target) };
@@ -45,14 +45,14 @@ impl Shout for EchoShout {
 }
 
 impl Echo {
-	pub fn shout(&mut self, f: impl Fn(&mut dyn Shout)) -> io::Result<()> {
-		let mut shout = EchoShout { says: Vec::new() };
-		f(&mut shout);
-		self.write_speech(Speech { says: shout.says })?;
+	pub fn write(&self, f: impl Fn(&mut dyn WriteScope)) -> io::Result<()> {
+		let mut write = WriteContext { says: Vec::new() };
+		f(&mut write);
+		self.write_speech(Speech { says: write.says })?;
 		Ok(())
 	}
 
-	fn write_speech(&mut self, speech: Speech) -> io::Result<Chamber> {
+	fn write_speech(&self, speech: Speech) -> io::Result<Chamber> {
 		let (tx, rx) = channel::<io::Result<Chamber>>();
 		let action = Action::Speech(speech, tx);
 		self.tx.send(action).unwrap();
