@@ -22,6 +22,45 @@ mod tests {
 	const MAX_COUNT: Point = Point::Static { name: "max_count", aspect: "Counter" };
 
 	#[test]
+	fn double_reconnect() -> Result<(), Box<dyn Error>> {
+		let path = {
+			let path = util::temp_dir("echo-test-")?;
+			let mut echo = Echo::connect(&path);
+			echo.shout(|write| {
+				write.target(Target::Number(3));
+			})?;
+			path
+		};
+		{
+			let mut echo = Echo::connect(&path);
+			echo.shout(|write| {
+				write.target(Target::Number(10));
+			})?;
+		}
+		let echo = Echo::connect(&path);
+		let mut chamber = echo.chamber()?;
+		assert_eq!(chamber.target(), Some(Target::Number(10)));
+		Ok(())
+	}
+
+	#[test]
+	fn reconnect() -> Result<(), Box<dyn Error>> {
+		let path = {
+			let path = util::temp_dir("echo-test-")?;
+			let mut echo = Echo::connect(&path);
+			echo.shout(|write| {
+				write.target(Target::Number(3));
+				write.target(Target::Number(10));
+			})?;
+			path
+		};
+		let echo = Echo::connect(&path);
+		let mut chamber = echo.chamber()?;
+		assert_eq!(chamber.target(), Some(Target::Number(10)));
+		Ok(())
+	}
+
+	#[test]
 	fn objects_with_point() -> Result<(), Box<dyn Error>> {
 		let dracula = ObjName::new("Dracula");
 		let bo_peep = ObjName::new("Bo Peep");

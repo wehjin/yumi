@@ -1,10 +1,13 @@
 use std::{io, thread};
-use std::path::Path;
+use std::fs::{File, OpenOptions};
+use std::io::{Seek, SeekFrom};
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
-use crate::{Chamber, diary, ObjName, Point, Say, Sayer, Speech, Target};
+use crate::{Chamber, diary, hamt, ObjName, Point, Say, Sayer, Speech, Target};
+use crate::bytes::{ReadBytes, WriteBytes};
 use crate::diary::Diary;
-use crate::hamt::{Hamt, ProdAB, Root};
+use crate::hamt::{Hamt, ProdAB, Root, ROOT_LEN};
 use crate::util::io_error;
 
 #[derive(Debug, Clone)]
@@ -45,11 +48,11 @@ impl Echo {
 	pub fn shout(&mut self, f: impl Fn(&mut dyn Shout)) -> io::Result<()> {
 		let mut shout = EchoShout { says: Vec::new() };
 		f(&mut shout);
-		self.send_speech(Speech { says: shout.says })?;
+		self.write_speech(Speech { says: shout.says })?;
 		Ok(())
 	}
 
-	fn send_speech(&mut self, speech: Speech) -> io::Result<Chamber> {
+	fn write_speech(&mut self, speech: Speech) -> io::Result<Chamber> {
 		let (tx, rx) = channel::<io::Result<Chamber>>();
 		let action = Action::Speech(speech, tx);
 		self.tx.send(action).unwrap();
@@ -64,30 +67,18 @@ impl Echo {
 	}
 
 	pub fn connect(folder_path: &Path) -> Self {
-		let diary_path = {
-			let mut path = folder_path.to_path_buf();
-			path.push("diary.dat");
-			path
-		};
+		let folder_path = folder_path.to_path_buf();
 		let (tx, rx) = sync_channel::<Action>(64);
 		thread::spawn(move || {
-			let diary = Diary::load(&diary_path).unwrap();
-			let mut diary_writer = diary.writer().unwrap();
-			let mut object_points = Hamt::new(Root::ZERO);
-			let mut point_objects = Hamt::new(Root::ZERO);
+			let mut echo = InnerEcho::new(folder_path);
 			for action in rx {
 				match action {
 					Action::Speech(speech, tx) => {
-						let chamber: io::Result<Chamber> = speech.says.into_iter()
-							.map(|say| write_say(&say, &mut point_objects, &mut object_points, &mut diary_writer))
-							.collect::<io::Result<Vec<_>>>()
-							.and_then(|_| Ok(diary.commit(diary_writer.end_size())))
-							.and_then(|_| chamber(&point_objects, &object_points, &diary));
-						tx.send(chamber).unwrap();
+						let new_chamber = echo.write_speech(speech);
+						tx.send(new_chamber).unwrap();
 					}
 					Action::Latest(tx) => {
-						// TODO Deal with reader unwrap.
-						let chamber = chamber(&point_objects, &object_points, &diary).unwrap();
+						let chamber = echo.chamber().unwrap();
 						tx.send(chamber).unwrap();
 					}
 				}
@@ -97,46 +88,119 @@ impl Echo {
 	}
 }
 
-fn chamber(point_objects: &Hamt, object_points: &Hamt, diary: &Diary) -> io::Result<Chamber> {
-	let object_points_reader = object_points.reader()?;
-	let point_objects_reader = point_objects.reader()?;
-	let diary_reader = diary.reader()?;
-	let chamber = Chamber { point_objects_reader, object_points_reader, diary_reader };
-	Ok(chamber)
+struct InnerEcho {
+	diary: Diary,
+	diary_writer: diary::Writer,
+	object_points: Hamt,
+	point_objects: Hamt,
+	roots_log: RootsLog,
 }
 
-fn write_say(say: &Say, point_objects: &mut Hamt, object_points: &mut Hamt, diary_writer: &mut diary::Writer) -> io::Result<()> {
-	let mut diary_reader = diary_writer.reader()?;
-	write_object_points(&say, object_points, diary_writer, &mut diary_reader)?;
-	write_point_objects(&say, point_objects, diary_writer, &mut diary_reader)?;
-	Ok(())
+impl InnerEcho {
+	fn write_speech(&mut self, speech: Speech) -> io::Result<Chamber> {
+		for say in speech.says.into_iter() {
+			let mut diary_reader = self.diary_writer.reader()?;
+			self.write_object_points(&say, &mut diary_reader)?;
+			self.write_point_objects(&say, &mut diary_reader)?;
+		}
+		self.diary.commit(self.diary_writer.end_size());
+		self.roots_log.write_roots(self.object_points.root, self.point_objects.root)?;
+		self.chamber()
+	}
+
+	fn write_point_objects(&mut self, say: &Say, diary_reader: &mut diary::Reader) -> io::Result<()> {
+		let object_targets_root = match self.point_objects.reader()?.read_value(&say.point, diary_reader)? {
+			None => Root::ZERO,
+			Some(root) => root
+		};
+		let mut object_targets = Hamt::new(object_targets_root);
+		let target = match say.target {
+			None => unimplemented!(),
+			Some(it) => it,
+		};
+		let object_target = ProdAB { a: say.object.to_owned(), b: target };
+		object_targets.write_value(&say.object, &object_target, &mut self.diary_writer)?;
+		self.point_objects.write_value(&say.point, &object_targets.root, &mut self.diary_writer)
+	}
+
+	fn write_object_points(&mut self, say: &Say, diary_reader: &mut diary::Reader) -> io::Result<()> {
+		let point_targets_root = match self.object_points.reader()?.read_value(&say.object, diary_reader)? {
+			None => Root::ZERO,
+			Some(it) => it,
+		};
+		let mut point_targets = Hamt::new(point_targets_root);
+		let target = match say.target {
+			None => unimplemented!(),
+			Some(it) => it,
+		};
+		point_targets.write_value(&say.point, &target, &mut self.diary_writer)?;
+		self.object_points.write_value(&say.object, &point_targets.root, &mut self.diary_writer)
+	}
+
+	fn chamber(&self) -> io::Result<Chamber> {
+		let chamber = Chamber {
+			point_objects_reader: self.point_objects.reader()?,
+			object_points_reader: self.object_points.reader()?,
+			diary_reader: self.diary.reader()?,
+		};
+		Ok(chamber)
+	}
+
+	fn new(folder_path: PathBuf) -> Self {
+		let diary = Diary::load(&file_path("diary.dat", &folder_path)).unwrap();
+		let diary_writer = diary.writer().unwrap();
+		let roots_log = RootsLog::new(&folder_path).unwrap();
+		let (object_points_root, point_objects_root) = roots_log.roots;
+		let object_points = Hamt::new(object_points_root);
+		let point_objects = Hamt::new(point_objects_root);
+		InnerEcho { diary, diary_writer, object_points, point_objects, roots_log }
+	}
 }
 
-fn write_point_objects(say: &Say, point_objects: &mut Hamt, diary_writer: &mut diary::Writer, mut diary_reader: &mut diary::Reader) -> io::Result<()> {
-	let object_targets_root = match point_objects.reader()?.read_value(&say.point, &mut diary_reader)? {
-		None => Root::ZERO,
-		Some(it) => it
-	};
-	let mut object_targets = Hamt::new(object_targets_root);
-	let target = match say.target {
-		None => unimplemented!(),
-		Some(it) => it,
-	};
-	let object_target = ProdAB { a: say.object.to_owned(), b: target };
-	object_targets.write_value(&say.object, &object_target, diary_writer)?;
-	point_objects.write_value(&say.point, &object_targets.root, diary_writer)
+struct RootsLog {
+	appender: File,
+	roots: (Root, Root),
 }
 
-fn write_object_points(say: &Say, object_points: &mut Hamt, diary_writer: &mut diary::Writer, mut diary_reader: &mut diary::Reader) -> io::Result<()> {
-	let point_targets_root = match object_points.reader()?.read_value(&say.object, &mut diary_reader)? {
-		None => Root::ZERO,
-		Some(it) => it,
-	};
-	let mut point_targets = Hamt::new(point_targets_root);
-	let target = match say.target {
-		None => unimplemented!(),
-		Some(it) => it,
-	};
-	point_targets.write_value(&say.point, &target, diary_writer)?;
-	object_points.write_value(&say.object, &point_targets.root, diary_writer)
+impl RootsLog {
+	pub fn write_roots(&mut self, a: Root, b: Root) -> io::Result<()> {
+		let pos = self.appender.seek(SeekFrom::Current(0))?;
+		let result = a.write_bytes(&mut self.appender)
+			.and_then(|len| {
+				assert_eq!(len, ROOT_LEN);
+				b.write_bytes(&mut self.appender)
+			})
+			.map(|len| {
+				assert_eq!(len, ROOT_LEN);
+				()
+			});
+		if result.is_err() {
+			self.appender.set_len(pos).unwrap();
+			self.appender.seek(SeekFrom::Start(pos)).unwrap();
+		}
+		result
+	}
+	pub fn new(folder_path: &Path) -> io::Result<Self> {
+		let file_path = file_path("roots.dat", folder_path);
+		let appender = OpenOptions::new().create(true).append(true).open(&file_path)?;
+		let roots = {
+			let file_len = std::fs::metadata(&file_path)?.len();
+			if file_len == 0 {
+				(Root::ZERO, Root::ZERO)
+			} else {
+				let mut reader = OpenOptions::new().read(true).open(&file_path)?;
+				reader.seek(SeekFrom::End(-2 * hamt::root::ROOT_LEN as i64))?;
+				let a_root = Root::read_bytes(&mut reader)?;
+				let b_root = Root::read_bytes(&mut reader)?;
+				(a_root, b_root)
+			}
+		};
+		Ok(RootsLog { appender, roots })
+	}
+}
+
+fn file_path(file_name: &str, folder_path: &Path) -> PathBuf {
+	let mut path = folder_path.to_path_buf();
+	path.push(file_name);
+	path
 }

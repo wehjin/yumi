@@ -14,13 +14,13 @@ use crate::hamt::writer::Writer;
 pub(crate) use self::reader::Reader;
 
 pub(crate) mod frame;
+pub(crate) mod root;
 mod data;
 mod hasher;
 mod slot;
 mod reader;
 mod slot_indexer;
 mod writer;
-mod root;
 
 #[cfg(test)]
 mod tests {
