@@ -16,7 +16,7 @@ pub mod bytes;
 mod tests {
 	use std::error::Error;
 
-	use crate::{Echo, ObjName, Point, Target};
+	use crate::{Echo, ObjName, Point, Target, util};
 
 	const COUNT: Point = Point::Static { name: "count", aspect: "Counter" };
 	const MAX_COUNT: Point = Point::Static { name: "max_count", aspect: "Counter" };
@@ -25,7 +25,7 @@ mod tests {
 	fn objects_with_point() -> Result<(), Box<dyn Error>> {
 		let dracula = ObjName::new("Dracula");
 		let bo_peep = ObjName::new("Bo Peep");
-		let mut echo = Echo::connect_temp();
+		let mut echo = Echo::connect(&util::temp_dir("echo-test-")?);
 		echo.shout(|shout| {
 			shout.object_attributes(&dracula, vec![(&COUNT, Target::Number(3)), ]);
 			shout.object_attributes(&bo_peep, vec![(&COUNT, Target::Number(7)), ]);
@@ -39,7 +39,7 @@ mod tests {
 	#[test]
 	fn object_attributes() -> Result<(), Box<dyn Error>> {
 		let dracula = ObjName::String("Dracula".into());
-		let mut echo = Echo::connect_temp();
+		let mut echo = Echo::connect(&util::temp_dir("echo-test-")?);
 		echo.shout(|shout| {
 			shout.object_attributes(&dracula, vec![(&COUNT, Target::Number(3))]);
 		})?;
@@ -50,7 +50,7 @@ mod tests {
 
 	#[test]
 	fn attributes() -> Result<(), Box<dyn Error>> {
-		let mut echo = Echo::connect_temp();
+		let mut echo = Echo::connect(&util::temp_dir("echo-test-")?);
 		echo.shout(|shout| {
 			shout.attributes(vec![
 				(&MAX_COUNT, Target::Number(100)),
@@ -67,7 +67,7 @@ mod tests {
 
 	#[test]
 	fn target() -> Result<(), Box<dyn Error>> {
-		let mut echo = Echo::connect_temp();
+		let mut echo = Echo::connect(&util::temp_dir("echo-test-")?);
 		let mut old_chamber = echo.chamber()?;
 		echo.shout(|write| {
 			write.target(Target::Number(3))

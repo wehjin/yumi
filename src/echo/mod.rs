@@ -1,4 +1,5 @@
 use std::{io, thread};
+use std::path::Path;
 use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
 use crate::{Chamber, diary, ObjName, Point, Say, Sayer, Speech, Target};
@@ -62,14 +63,15 @@ impl Echo {
 		rx.recv().map_err(io_error)
 	}
 
-	pub fn connect_temp() -> Self {
-		let diary = Diary::temp().unwrap();
-		Self::connect(diary)
-	}
-
-	pub fn connect(diary: Diary) -> Self {
+	pub fn connect(folder_path: &Path) -> Self {
+		let diary_path = {
+			let mut path = folder_path.to_path_buf();
+			path.push("diary.dat");
+			path
+		};
 		let (tx, rx) = sync_channel::<Action>(64);
 		thread::spawn(move || {
+			let diary = Diary::load(&diary_path).unwrap();
 			let mut diary_writer = diary.writer().unwrap();
 			let mut object_points = Hamt::new(Root::ZERO);
 			let mut point_objects = Hamt::new(Root::ZERO);

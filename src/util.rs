@@ -1,7 +1,16 @@
 use std::io;
 use std::io::ErrorKind;
+use std::path::PathBuf;
 use std::string::FromUtf8Error;
 use std::sync::mpsc::RecvError;
+
+pub(crate) fn temp_dir(prefix: &str) -> io::Result<PathBuf> {
+	let mut path = std::env::temp_dir();
+	let string = format!("{}{}", prefix, rand::random::<u32>());
+	path.push(&string);
+	std::fs::create_dir_all(&path)?;
+	Ok(path)
+}
 
 pub(crate) fn set_high_bit(n: u32) -> u32 {
 	n | 0x80000000

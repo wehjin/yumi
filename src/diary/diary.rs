@@ -4,6 +4,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use crate::diary::{Reader, Writer};
+use crate::util;
 
 pub struct Diary {
 	pub file_path: PathBuf,
@@ -21,8 +22,8 @@ impl Diary {
 		Writer::new(&self.file_path, self.file_size.get())
 	}
 	pub fn temp() -> io::Result<Diary> {
-		let mut path = std::env::temp_dir();
-		path.push(&format!("diary{}", rand::random::<u32>()));
+		let mut path = util::temp_dir("diary")?;
+		path.push("diary.dat");
 		Diary::load(&path)
 	}
 	pub fn load(file_path: &Path) -> io::Result<Diary> {
