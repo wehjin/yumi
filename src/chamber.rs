@@ -9,7 +9,18 @@ pub struct Chamber {
 	pub(crate) diary_reader: diary::Reader,
 }
 
+
 impl Chamber {
+	pub fn filter<'a, PH: Filter<'a>>(&mut self) -> io::Result<Vec<PH>> {
+		let obj_names = self.objects_with_point(PH::key_point())?;
+		let holders = obj_names.into_iter()
+			.map(|obj_name| {
+				let properties = self.object_properties(&obj_name, PH::data_points().to_vec());
+				PH::from_name_and_properties(&obj_name, properties)
+			}).collect::<Vec<_>>();
+		Ok(holders)
+	}
+
 	pub fn objects_with_point(&mut self, point: &Point) -> io::Result<Vec<ObjName>> {
 		let objects_root: Option<Root> = self.point_objects_reader.read_value(point, &mut self.diary_reader)?;
 		let objects = match objects_root {
@@ -23,15 +34,15 @@ impl Chamber {
 		Ok(objects)
 	}
 
-	pub fn object_attributes<'a>(&mut self, object: &'a ObjName, points: Vec<&'a Point>) -> Vec<(&'a Point, Option<Target>)> {
+	pub fn object_properties<'a>(&mut self, object: &'a ObjName, points: Vec<&'a Point>) -> Vec<(&'a Point, Option<Target>)> {
 		points.into_iter().map(|point| {
 			let target = self.read_target(object, point).unwrap_or(None);
 			(point, target)
 		}).collect()
 	}
 
-	pub fn attributes<'a>(&mut self, points: Vec<&'a Point>) -> Vec<(&'a Point, Option<Target>)> {
-		self.object_attributes(&ObjName::Unit, points)
+	pub fn properties<'a>(&mut self, points: Vec<&'a Point>) -> Vec<(&'a Point, Option<Target>)> {
+		self.object_properties(&ObjName::Unit, points)
 	}
 
 	pub fn target(&mut self) -> Option<Target> {
@@ -48,4 +59,10 @@ impl Chamber {
 			}
 		}
 	}
+}
+
+pub trait Filter<'a> {
+	fn key_point() -> &'a Point;
+	fn data_points() -> &'a [&'a Point];
+	fn from_name_and_properties(obj_name: &ObjName, attributes: Vec<(&Point, Option<Target>)>) -> Self;
 }
