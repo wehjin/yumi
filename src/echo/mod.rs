@@ -114,9 +114,9 @@ impl InnerEcho {
 			Some(root) => root
 		};
 		let mut object_targets = Hamt::new(object_targets_root);
-		let target = match say.target {
+		let target = match &say.target {
 			None => unimplemented!(),
-			Some(it) => it,
+			Some(it) => it.clone(),
 		};
 		let object_target = ProdAB { a: say.object.to_owned(), b: target };
 		object_targets.write_value(&say.object, &object_target, &mut self.diary_writer)?;
@@ -129,9 +129,9 @@ impl InnerEcho {
 			Some(it) => it,
 		};
 		let mut point_targets = Hamt::new(point_targets_root);
-		let target = match say.target {
+		let target = match &say.target {
 			None => unimplemented!(),
-			Some(it) => it,
+			Some(it) => it.clone(),
 		};
 		point_targets.write_value(&say.point, &target, &mut self.diary_writer)?;
 		self.object_points.write_value(&say.object, &point_targets.root, &mut self.diary_writer)

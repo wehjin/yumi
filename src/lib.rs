@@ -116,8 +116,8 @@ mod tests {
 		echo.write(|shout| {
 			shout.object_attributes(&dracula, vec![(&COUNT, Target::Number(3))]);
 		})?;
-		let attributes = echo.chamber()?.object_attributes(&dracula, vec![&COUNT])[0];
-		assert_eq!(attributes, (&COUNT, Some(Target::Number(3))));
+		let attributes = echo.chamber()?.object_attributes(&dracula, vec![&COUNT]);
+		assert_eq!(attributes[0], (&COUNT, Some(Target::Number(3))));
 		Ok(())
 	}
 

@@ -26,9 +26,10 @@ pub enum Sayer {
 mod object;
 mod point;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Target {
-	Number(u64)
+	Number(u64),
+	Text(String),
 }
 
 mod target;

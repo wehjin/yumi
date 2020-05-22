@@ -47,9 +47,9 @@ impl Writer {
 		let (sayer_start, sayer_size) = self.write(&say.sayer)?;
 		let (object_start, object_size) = self.write(&say.object)?;
 		let (point_start, point_size) = self.write(&say.point)?;
-		let target = match say.target {
+		let target = match &say.target {
 			None => unimplemented!(),
-			Some(it) => it
+			Some(it) => it.clone(),
 		};
 		let (target_start, target_size) = self.write(&target)?;
 		let end = Pos::at(start + sayer_size + object_size + point_size + target_size);
