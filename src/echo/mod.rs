@@ -4,11 +4,15 @@ use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
-use crate::{Chamber, diary, hamt, ObjName, Point, Say, Sayer, Speech, Target};
+pub use write_scope::WriteScope;
+
+use crate::{Chamber, diary, hamt, Say, Speech};
 use crate::bytes::{ReadBytes, WriteBytes};
 use crate::diary::Diary;
 use crate::hamt::{Hamt, ProdAB, Root, ROOT_LEN};
 use crate::util::io_error;
+
+mod write_scope;
 
 #[derive(Debug, Clone)]
 pub struct Echo {
@@ -20,33 +24,9 @@ enum Action {
 	Latest(Sender<Chamber>),
 }
 
-pub trait WriteScope {
-	fn object_attributes(&mut self, object: &ObjName, attributes: Vec<(&Point, Target)>);
-
-	fn attributes(&mut self, attributes: Vec<(&Point, Target)>) {
-		self.object_attributes(&ObjName::Unit, attributes)
-	}
-	fn target(&mut self, target: Target) {
-		self.attributes(vec![(&Point::Unit, target)])
-	}
-}
-
-struct WriteContext {
-	says: Vec<Say>
-}
-
-impl WriteScope for WriteContext {
-	fn object_attributes(&mut self, object: &ObjName, attributes: Vec<(&Point, Target)>) {
-		for (point, target) in attributes {
-			let say = Say { sayer: Sayer::Unit, object: object.to_owned(), point: point.to_owned(), target: Some(target) };
-			self.says.push(say)
-		}
-	}
-}
-
 impl Echo {
-	pub fn write(&self, f: impl Fn(&mut dyn WriteScope)) -> io::Result<()> {
-		let mut write = WriteContext { says: Vec::new() };
+	pub fn write(&self, f: impl Fn(&mut WriteScope)) -> io::Result<()> {
+		let mut write = WriteScope { says: Vec::new() };
 		f(&mut write);
 		self.write_speech(Speech { says: write.says })?;
 		Ok(())

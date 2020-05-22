@@ -15,13 +15,82 @@ pub mod bytes;
 #[cfg(test)]
 mod tests {
 	use std::{io, thread};
+	use std::collections::HashMap;
 	use std::error::Error;
 	use std::sync::mpsc::channel;
 
-	use crate::{Echo, ObjName, Point, Target, util};
+	use crate::{Echo, ObjName, Point, Say, Sayer, Target, util, Writable};
 
 	const COUNT: Point = Point::Static { name: "count", aspect: "Counter" };
 	const MAX_COUNT: Point = Point::Static { name: "max_count", aspect: "Counter" };
+
+	#[derive(Debug, Eq, PartialEq)]
+	struct Counter {
+		obj_name: ObjName,
+		attributes: HashMap<Point, Target>,
+	}
+
+	impl Counter {
+		pub fn new(name: &str, count: u64, max_count: u64) -> Self {
+			let obj_name = ObjName::String(name.into());
+			let mut attributes = HashMap::new();
+			attributes.insert(COUNT, Target::Number(count));
+			attributes.insert(MAX_COUNT, Target::Number(max_count));
+			Counter { obj_name, attributes }
+		}
+	}
+
+	impl Writable for Counter {
+		fn to_says(&self) -> Vec<Say> {
+			self.attributes.keys()
+				.map(|point| Say {
+					sayer: Sayer::Unit,
+					object: self.obj_name.to_owned(),
+					point: point.to_owned(),
+					target: self.attributes.get(point).map(Target::to_owned),
+				})
+				.collect()
+		}
+	}
+
+	trait PointHolder<'a> {
+		fn key_point() -> &'a Point;
+		fn data_points() -> &'a [&'a Point];
+		fn from_name_and_attributes(obj_name: &ObjName, attributes: Vec<(&Point, Option<Target>)>) -> Self;
+	}
+
+	const COUNTER_POINTS: &[&Point] = &[&COUNT, &MAX_COUNT];
+
+	impl<'a> PointHolder<'a> for Counter {
+		fn key_point() -> &'a Point { COUNTER_POINTS[0] }
+		fn data_points() -> &'a [&'a Point] { COUNTER_POINTS }
+		fn from_name_and_attributes(obj_name: &ObjName, attributes: Vec<(&Point, Option<Target>)>) -> Self {
+			let mut map = HashMap::new();
+			for (point, target) in attributes {
+				if let Some(target) = target {
+					map.insert(point.to_owned(), target);
+				}
+			}
+			Counter { obj_name: obj_name.to_owned(), attributes: map }
+		}
+	}
+
+	#[test]
+	fn point_holder() {
+		let counter = Counter::new("card-counter", 1, 56);
+		let mut chamber = {
+			let echo = Echo::connect(&util::temp_dir("point-holder").unwrap());
+			echo.write(|txn| txn.writable(&counter)).unwrap();
+			echo.chamber().unwrap()
+		};
+		let obj_names = chamber.objects_with_point(Counter::key_point()).unwrap();
+		let found_counters = obj_names.into_iter().map(|obj_name| {
+			let attributes = chamber.object_attributes(&obj_name, Counter::data_points().to_vec());
+			Counter::from_name_and_attributes(&obj_name, attributes)
+		}).collect::<Vec<_>>();
+		assert_eq!(1, found_counters.len());
+		assert_eq!(counter, found_counters[0]);
+	}
 
 	#[test]
 	fn multi_thread() -> Result<(), Box<dyn Error>> {

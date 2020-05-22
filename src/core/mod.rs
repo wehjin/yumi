@@ -9,6 +9,10 @@ pub(crate) struct Speech {
 	pub says: Vec<Say>
 }
 
+pub trait Writable {
+	fn to_says(&self) -> Vec<Say>;
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Say {
 	pub sayer: Sayer,
