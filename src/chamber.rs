@@ -11,12 +11,12 @@ pub struct Chamber {
 
 
 impl Chamber {
-	pub fn filter<'a, PH: Filter<'a>>(&mut self) -> io::Result<Vec<PH>> {
-		let obj_names = self.objects_with_point(PH::key_point())?;
+	pub fn filter<'a, F: Filter<'a>>(&mut self) -> io::Result<Vec<F>> {
+		let obj_names = self.objects_with_point(F::key_point())?;
 		let holders = obj_names.into_iter()
 			.map(|obj_name| {
-				let properties = self.object_properties(&obj_name, PH::data_points().to_vec());
-				PH::from_name_and_properties(&obj_name, properties)
+				let properties = self.object_properties(&obj_name, F::data_points().to_vec());
+				F::from_name_and_properties(&obj_name, properties)
 			}).collect::<Vec<_>>();
 		Ok(holders)
 	}
