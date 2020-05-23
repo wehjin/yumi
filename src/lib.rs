@@ -21,7 +21,7 @@ mod tests {
 	use std::error::Error;
 	use std::sync::mpsc::channel;
 
-	use crate::{Echo, Filter, ObjName, Point, Say, Target, util, Writable};
+	use crate::{Echo, ObjectFilter, ObjName, Point, Say, Target, util, Writable};
 	use crate::object::Object;
 
 	const COUNT: Point = Point::Static { name: "count", aspect: "Counter" };
@@ -51,7 +51,7 @@ mod tests {
 		fn to_says(&self) -> Vec<Say> { self.object.to_says() }
 	}
 
-	impl<'a> Filter<'a> for Counter {
+	impl<'a> ObjectFilter<'a> for Counter {
 		fn key_point() -> &'a Point { &COUNT }
 		fn data_points() -> &'a [&'a Point] { &[&COUNT, &MAX_COUNT] }
 		fn from_name_and_properties(obj_name: &ObjName, properties: Vec<(&Point, Option<Target>)>) -> Self {
@@ -68,7 +68,7 @@ mod tests {
 			echo.write(|txn| txn.writable(&counter)).unwrap();
 			echo.chamber().unwrap()
 		};
-		let counters = chamber.filter::<Counter>().unwrap();
+		let counters = chamber.objects::<Counter>().unwrap();
 		assert_eq!(1, counters.len());
 		let final_counter = &counters[0];
 		assert_eq!(final_counter, &counter);

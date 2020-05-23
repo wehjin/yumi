@@ -43,6 +43,13 @@ impl Target {
 			_ => panic!("Target is not a number")
 		}
 	}
+
+	pub fn as_str(&self) -> &str {
+		match self {
+			Target::Text(s) => s,
+			_ => panic!("Target is not text")
+		}
+	}
 }
 
 mod target;
