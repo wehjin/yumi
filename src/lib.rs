@@ -3,73 +3,66 @@ extern crate rand;
 pub use self::chamber::*;
 pub use self::core::*;
 pub use self::echo::Echo;
+pub use self::object::*;
 
 mod chamber;
 mod core;
 mod echo;
+mod object;
 mod util;
 pub mod hamt;
 pub mod diary;
 pub mod bytes;
 
+
 #[cfg(test)]
 mod tests {
 	use std::{io, thread};
-	use std::collections::HashMap;
 	use std::error::Error;
 	use std::sync::mpsc::channel;
 
-	use crate::{Echo, Filter, ObjName, Point, Say, Sayer, Target, util, Writable};
+	use crate::{Echo, Filter, ObjName, Point, Say, Target, util, Writable};
+	use crate::object::Object;
 
 	const COUNT: Point = Point::Static { name: "count", aspect: "Counter" };
 	const MAX_COUNT: Point = Point::Static { name: "max_count", aspect: "Counter" };
 
 	#[derive(Debug, Eq, PartialEq)]
-	struct Counter {
-		obj_name: ObjName,
-		attributes: HashMap<Point, Target>,
-	}
+	struct Counter { object: Object }
 
 	impl Counter {
+		pub fn count(&self) -> u64 {
+			self.object[&COUNT].as_number()
+		}
+
 		pub fn new(name: &str, count: u64, max_count: u64) -> Self {
-			let obj_name = ObjName::String(name.into());
-			let mut attributes = HashMap::new();
-			attributes.insert(COUNT, Target::Number(count));
-			attributes.insert(MAX_COUNT, Target::Number(max_count));
-			Counter { obj_name, attributes }
+			let object = Object::new(
+				&ObjName::String(name.into()),
+				vec![
+					(&COUNT, Some(Target::Number(count))),
+					(&MAX_COUNT, Some(Target::Number(max_count)))
+				],
+			);
+			Counter { object }
 		}
 	}
 
 	impl Writable for Counter {
-		fn to_says(&self) -> Vec<Say> {
-			self.attributes.keys()
-				.map(|point| Say {
-					sayer: Sayer::Unit,
-					object: self.obj_name.to_owned(),
-					point: point.to_owned(),
-					target: self.attributes.get(point).map(Target::to_owned),
-				})
-				.collect()
-		}
+		fn to_says(&self) -> Vec<Say> { self.object.to_says() }
 	}
 
 	impl<'a> Filter<'a> for Counter {
 		fn key_point() -> &'a Point { &COUNT }
 		fn data_points() -> &'a [&'a Point] { &[&COUNT, &MAX_COUNT] }
-		fn from_name_and_properties(obj_name: &ObjName, attributes: Vec<(&Point, Option<Target>)>) -> Self {
-			let mut map = HashMap::new();
-			for (point, target) in attributes {
-				if let Some(target) = target {
-					map.insert(point.to_owned(), target);
-				}
-			}
-			Counter { obj_name: obj_name.to_owned(), attributes: map }
+		fn from_name_and_properties(obj_name: &ObjName, properties: Vec<(&Point, Option<Target>)>) -> Self {
+			let object = Object::new(obj_name, properties);
+			Counter { object }
 		}
 	}
 
 	#[test]
 	fn filter() {
-		let counter = Counter::new("card-counter", 1, 56);
+		let counter = Counter::new("card-counter", 7, 56);
 		let mut chamber = {
 			let echo = Echo::connect(&util::temp_dir("point-holder").unwrap());
 			echo.write(|txn| txn.writable(&counter)).unwrap();
@@ -77,7 +70,9 @@ mod tests {
 		};
 		let counters = chamber.filter::<Counter>().unwrap();
 		assert_eq!(1, counters.len());
-		assert_eq!(counter, counters[0]);
+		let final_counter = &counters[0];
+		assert_eq!(final_counter, &counter);
+		assert_eq!(final_counter.count(), 7)
 	}
 
 	#[test]

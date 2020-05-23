@@ -36,5 +36,14 @@ pub enum Target {
 	Text(String),
 }
 
+impl Target {
+	pub fn as_number(&self) -> u64 {
+		match self {
+			Target::Number(n) => *n,
+			_ => panic!("Target is not a number")
+		}
+	}
+}
+
 mod target;
 
