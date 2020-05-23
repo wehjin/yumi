@@ -20,7 +20,7 @@ mod tests {
 	}
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Object {
 	pub name: ObjName,
 	pub properties: HashMap<Point, Target>,
