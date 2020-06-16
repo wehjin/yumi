@@ -6,10 +6,15 @@ use std::sync::mpsc::RecvError;
 
 pub(crate) fn temp_dir(prefix: &str) -> io::Result<PathBuf> {
 	let mut path = std::env::temp_dir();
-	let string = format!("{}{}", prefix, rand::random::<u32>());
+	let string = random_name(prefix);
 	path.push(&string);
 	std::fs::create_dir_all(&path)?;
 	Ok(path)
+}
+
+pub fn random_name(prefix: &str) -> String {
+	let string = format!("{}{}", prefix, rand::random::<u32>());
+	string
 }
 
 pub(crate) fn set_high_bit(n: u32) -> u32 {

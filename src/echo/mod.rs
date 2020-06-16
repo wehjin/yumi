@@ -46,8 +46,11 @@ impl Echo {
 		rx.recv().map_err(io_error)
 	}
 
-	pub fn connect(folder_path: &Path) -> Self {
-		let folder_path = folder_path.to_path_buf();
+	/// Connects to an Echo.
+	pub fn connect(name: &str, folder: &Path) -> Self {
+		let mut folder_path = folder.to_path_buf();
+		folder_path.push(name);
+		std::fs::create_dir_all(&folder_path).unwrap();
 		let (tx, rx) = sync_channel::<Action>(64);
 		thread::spawn(move || {
 			let mut echo = InnerEcho::new(folder_path);

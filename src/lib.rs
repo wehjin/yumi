@@ -1,3 +1,9 @@
+//! Basic Usage:
+//!
+//! ```
+//! use echo_lib::Echo;
+//! let echo = Echo::connect("my-app", &data_dir());
+//! ```
 extern crate rand;
 
 pub use self::chamber::*;
@@ -21,8 +27,9 @@ mod tests {
 	use std::error::Error;
 	use std::sync::mpsc::channel;
 
-	use crate::{Echo, ObjectFilter, ObjName, Point, Say, Target, util, Writable};
+	use crate::{Echo, ObjectFilter, ObjName, Point, Say, Target, Writable};
 	use crate::object::Object;
+	use crate::util::random_name;
 
 	const COUNT: Point = Point::Static { name: "count", aspect: "Counter" };
 	const MAX_COUNT: Point = Point::Static { name: "max_count", aspect: "Counter" };
@@ -64,7 +71,7 @@ mod tests {
 	fn filter() {
 		let counter = Counter::new("card-counter", 7, 56);
 		let mut chamber = {
-			let echo = Echo::connect(&util::temp_dir("point-holder").unwrap());
+			let echo = Echo::connect(&random_name("point-holder"), &std::env::temp_dir());
 			echo.write(|txn| txn.writable(&counter)).unwrap();
 			echo.chamber().unwrap()
 		};
@@ -77,7 +84,7 @@ mod tests {
 
 	#[test]
 	fn multi_thread() -> Result<(), Box<dyn Error>> {
-		let echo = Echo::connect(&util::temp_dir("test-multi-thread")?);
+		let echo = Echo::connect(&random_name("test-multi-thread"), &std::env::temp_dir());
 		let job1 = {
 			let echo = echo.clone();
 			thread::spawn(move || {
@@ -110,20 +117,20 @@ mod tests {
 	#[test]
 	fn double_reconnect() -> Result<(), Box<dyn Error>> {
 		let path = {
-			let path = util::temp_dir("echo-test-")?;
-			let echo = Echo::connect(&path);
+			let path = random_name("echo-test-");
+			let echo = Echo::connect(&path, &std::env::temp_dir());
 			echo.write(|write| {
 				write.target(Target::Number(3));
 			})?;
 			path
 		};
 		{
-			let echo = Echo::connect(&path);
+			let echo = Echo::connect(&path, &std::env::temp_dir());
 			echo.write(|write| {
 				write.target(Target::Number(10));
 			})?;
 		}
-		let echo = Echo::connect(&path);
+		let echo = Echo::connect(&path, &std::env::temp_dir());
 		let mut chamber = echo.chamber()?;
 		assert_eq!(chamber.target(), Some(Target::Number(10)));
 		Ok(())
@@ -132,15 +139,15 @@ mod tests {
 	#[test]
 	fn reconnect() -> Result<(), Box<dyn Error>> {
 		let path = {
-			let path = util::temp_dir("echo-test-")?;
-			let echo = Echo::connect(&path);
+			let path = random_name("echo-test-");
+			let echo = Echo::connect(&path, &std::env::temp_dir());
 			echo.write(|write| {
 				write.target(Target::Number(3));
 				write.target(Target::Number(10));
 			})?;
 			path
 		};
-		let echo = Echo::connect(&path);
+		let echo = Echo::connect(&path, &std::env::temp_dir());
 		let mut chamber = echo.chamber()?;
 		assert_eq!(chamber.target(), Some(Target::Number(10)));
 		Ok(())
@@ -150,7 +157,7 @@ mod tests {
 	fn objects_with_point() -> Result<(), Box<dyn Error>> {
 		let dracula = ObjName::new("Dracula");
 		let bo_peep = ObjName::new("Bo Peep");
-		let echo = Echo::connect(&util::temp_dir("echo-test-")?);
+		let echo = Echo::connect(&random_name("echo-test-"), &std::env::temp_dir());
 		echo.write(|shout| {
 			shout.object_attributes(&dracula, vec![(&COUNT, Target::Number(3)), ]);
 			shout.object_attributes(&bo_peep, vec![(&COUNT, Target::Number(7)), ]);
@@ -164,7 +171,7 @@ mod tests {
 	#[test]
 	fn object_attributes() -> Result<(), Box<dyn Error>> {
 		let dracula = ObjName::String("Dracula".into());
-		let echo = Echo::connect(&util::temp_dir("echo-test-")?);
+		let echo = Echo::connect(&random_name("echo-test-"), &std::env::temp_dir());
 		echo.write(|shout| {
 			shout.object_attributes(&dracula, vec![(&COUNT, Target::Number(3))]);
 		})?;
@@ -175,7 +182,7 @@ mod tests {
 
 	#[test]
 	fn attributes() -> Result<(), Box<dyn Error>> {
-		let echo = Echo::connect(&util::temp_dir("echo-test-")?);
+		let echo = Echo::connect(&random_name("echo-test-"), &std::env::temp_dir());
 		echo.write(|shout| {
 			shout.attributes(vec![
 				(&MAX_COUNT, Target::Number(100)),
@@ -192,7 +199,7 @@ mod tests {
 
 	#[test]
 	fn target() -> Result<(), Box<dyn Error>> {
-		let echo = Echo::connect(&util::temp_dir("echo-test-")?);
+		let echo = Echo::connect(&random_name("echo-test-"), &std::env::temp_dir());
 		let mut old_chamber = echo.chamber()?;
 		echo.write(|write| {
 			write.target(Target::Number(3))
