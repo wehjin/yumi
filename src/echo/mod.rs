@@ -25,11 +25,11 @@ enum Action {
 }
 
 impl Echo {
-	pub fn write(&self, f: impl Fn(&mut WriteScope)) -> io::Result<()> {
+	pub fn write<R>(&self, f: impl Fn(&mut WriteScope) -> R) -> io::Result<R> {
 		let mut write = WriteScope { says: Vec::new() };
-		f(&mut write);
+		let result = f(&mut write);
 		self.write_speech(Speech { says: write.says })?;
-		Ok(())
+		Ok(result)
 	}
 
 	fn write_speech(&self, speech: Speech) -> io::Result<Chamber> {

@@ -7,8 +7,8 @@ use crate::hamt::Key;
 #[derive(Debug, Clone, Eq, Hash)]
 pub enum Point {
 	Unit,
-	String { name: String, aspect: String },
-	Static { name: &'static str, aspect: &'static str },
+	String { aspect: String, name: String },
+	Static { aspect: &'static str, name: &'static str },
 }
 
 impl Key for Point {}

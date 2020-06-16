@@ -1,18 +1,18 @@
 use std::collections::HashMap;
 use std::ops::Index;
 
-use crate::{ObjName, Point, Say, Sayer, Target, Writable};
+use crate::{ObjectId, Point, Say, Sayer, Target, Writable};
 
 #[cfg(test)]
 mod tests {
-	use crate::{Object, ObjName, Point, Target};
+	use crate::{Object, ObjectId, Point, Target};
 
 	const COUNT: Point = Point::Static { name: "count", aspect: "Counter" };
 
 	#[test]
 	fn index() {
 		let object = Object::new(
-			&ObjName::String("MyCounter".into()),
+			&ObjectId::String("MyCounter".into()),
 			vec![(&COUNT, Some(Target::Number(17)))],
 		);
 		let count = &object[&COUNT];
@@ -22,20 +22,26 @@ mod tests {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Object {
-	pub name: ObjName,
+	pub id: ObjectId,
 	pub properties: HashMap<Point, Target>,
 }
 
 impl Object {
-	pub fn new(obj_name: &ObjName, properties: Vec<(&Point, Option<Target>)>) -> Self {
+	pub fn insert(&mut self, point: &Point, target: Target) {
+		let mut properties = self.properties.clone();
+		properties.insert(point.clone(), target);
+		self.properties = properties
+	}
+	pub fn new(object_id: &ObjectId, properties: Vec<(&Point, Option<Target>)>) -> Self {
 		let mut map = HashMap::new();
 		for (point, target) in properties {
 			if let Some(target) = target {
 				map.insert(point.to_owned(), target);
 			}
 		}
-		Object { name: obj_name.to_owned(), properties: map }
+		Object { id: object_id.to_owned(), properties: map }
 	}
+	pub fn new_with_id(object_id: &ObjectId) -> Self { Object { id: object_id.to_owned(), properties: HashMap::new() } }
 }
 
 impl Index<&Point> for Object {
@@ -48,7 +54,7 @@ impl Writable for Object {
 		self.properties.keys()
 			.map(|point| Say {
 				sayer: Sayer::Unit,
-				object: self.name.to_owned(),
+				object: self.id.to_owned(),
 				point: point.to_owned(),
 				target: self.properties.get(point).map(Target::to_owned),
 			})

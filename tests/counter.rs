@@ -2,8 +2,8 @@ use std::{io, thread};
 use std::error::Error;
 use std::sync::mpsc::channel;
 
-use echo_lib::{Echo, Object, ObjectFilter, ObjName, Point, Say, Target, Writable};
-use echo_lib::util::random_name;
+use echo_lib::{Echo, Object, ObjectFilter, ObjectId, Point, Say, Target, Writable};
+use echo_lib::util::unique_name;
 
 const COUNT: Point = Point::Static { name: "count", aspect: "Counter" };
 const MAX_COUNT: Point = Point::Static { name: "max_count", aspect: "Counter" };
@@ -18,7 +18,7 @@ impl Counter {
 
 	pub fn new(name: &str, count: u64, max_count: u64) -> Self {
 		let object = Object::new(
-			&ObjName::String(name.into()),
+			&ObjectId::String(name.into()),
 			vec![
 				(&COUNT, Some(Target::Number(count))),
 				(&MAX_COUNT, Some(Target::Number(max_count)))
@@ -35,7 +35,7 @@ impl Writable for Counter {
 impl<'a> ObjectFilter<'a> for Counter {
 	fn key_point() -> &'a Point { &COUNT }
 	fn data_points() -> &'a [&'a Point] { &[&COUNT, &MAX_COUNT] }
-	fn from_name_and_properties(obj_name: &ObjName, properties: Vec<(&Point, Option<Target>)>) -> Self {
+	fn from_name_and_properties(obj_name: &ObjectId, properties: Vec<(&Point, Option<Target>)>) -> Self {
 		let object = Object::new(obj_name, properties);
 		Counter { object }
 	}
@@ -45,7 +45,7 @@ impl<'a> ObjectFilter<'a> for Counter {
 fn filter() {
 	let counter = Counter::new("card-counter", 7, 56);
 	let mut chamber = {
-		let echo = Echo::connect(&random_name("point-holder"), &std::env::temp_dir());
+		let echo = Echo::connect(&unique_name("point-holder"), &std::env::temp_dir());
 		echo.write(|txn| txn.writable(&counter)).unwrap();
 		echo.chamber().unwrap()
 	};
@@ -58,7 +58,7 @@ fn filter() {
 
 #[test]
 fn multi_thread() -> Result<(), Box<dyn Error>> {
-	let echo = Echo::connect(&random_name("test-multi-thread"), &std::env::temp_dir());
+	let echo = Echo::connect(&unique_name("test-multi-thread"), &std::env::temp_dir());
 	let job1 = {
 		let echo = echo.clone();
 		thread::spawn(move || {
@@ -91,7 +91,7 @@ fn multi_thread() -> Result<(), Box<dyn Error>> {
 #[test]
 fn double_reconnect() -> Result<(), Box<dyn Error>> {
 	let path = {
-		let path = random_name("echo-test-");
+		let path = unique_name("echo-test-");
 		let echo = Echo::connect(&path, &std::env::temp_dir());
 		echo.write(|write| {
 			write.target(Target::Number(3));
@@ -113,7 +113,7 @@ fn double_reconnect() -> Result<(), Box<dyn Error>> {
 #[test]
 fn reconnect() -> Result<(), Box<dyn Error>> {
 	let path = {
-		let path = random_name("echo-test-");
+		let path = unique_name("echo-test-");
 		let echo = Echo::connect(&path, &std::env::temp_dir());
 		echo.write(|write| {
 			write.target(Target::Number(3));
@@ -129,9 +129,9 @@ fn reconnect() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn objects_with_point() -> Result<(), Box<dyn Error>> {
-	let dracula = ObjName::new("Dracula");
-	let bo_peep = ObjName::new("Bo Peep");
-	let echo = Echo::connect(&random_name("echo-test-"), &std::env::temp_dir());
+	let dracula = ObjectId::new("Dracula");
+	let bo_peep = ObjectId::new("Bo Peep");
+	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
 	echo.write(|shout| {
 		shout.object_attributes(&dracula, vec![(&COUNT, Target::Number(3)), ]);
 		shout.object_attributes(&bo_peep, vec![(&COUNT, Target::Number(7)), ]);
@@ -144,8 +144,8 @@ fn objects_with_point() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn object_attributes() -> Result<(), Box<dyn Error>> {
-	let dracula = ObjName::String("Dracula".into());
-	let echo = Echo::connect(&random_name("echo-test-"), &std::env::temp_dir());
+	let dracula = ObjectId::String("Dracula".into());
+	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
 	echo.write(|shout| {
 		shout.object_attributes(&dracula, vec![(&COUNT, Target::Number(3))]);
 	})?;
@@ -156,7 +156,7 @@ fn object_attributes() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn attributes() -> Result<(), Box<dyn Error>> {
-	let echo = Echo::connect(&random_name("echo-test-"), &std::env::temp_dir());
+	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
 	echo.write(|shout| {
 		shout.attributes(vec![
 			(&MAX_COUNT, Target::Number(100)),
@@ -173,7 +173,7 @@ fn attributes() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn target() -> Result<(), Box<dyn Error>> {
-	let echo = Echo::connect(&random_name("echo-test-"), &std::env::temp_dir());
+	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
 	let mut old_chamber = echo.chamber()?;
 	echo.write(|write| {
 		write.target(Target::Number(3))

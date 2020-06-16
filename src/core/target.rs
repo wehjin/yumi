@@ -1,8 +1,8 @@
 use std::io::{Read, Write};
 use std::io;
 
+use crate::{ObjectId, Target};
 use crate::bytes::{ReadBytes, WriteBytes};
-use crate::Target;
 
 #[cfg(test)]
 mod tests {
@@ -13,7 +13,7 @@ mod tests {
 
 	#[test]
 	fn text() {
-		let target = Target::Text("Hello".into());
+		let target = Target::String("Hello".into());
 		let mut cursor = Cursor::new(Vec::new());
 		target.write_bytes(&mut cursor).unwrap();
 		cursor.set_position(0);
@@ -31,7 +31,11 @@ impl ReadBytes<Target> for Target {
 			}
 			2 => {
 				let s = String::read_bytes(reader)?;
-				Ok(Target::Text(s))
+				Ok(Target::String(s))
+			}
+			3 => {
+				let object_id = ObjectId::read_bytes(reader)?;
+				Ok(Target::Object(object_id))
 			}
 			_ => unimplemented!()
 		}
@@ -46,9 +50,13 @@ impl WriteBytes for Target {
 				writer.write_all(&[1])?;
 				n.write_bytes(writer)?
 			}
-			Target::Text(s) => {
+			Target::String(s) => {
 				writer.write_all(&[2])?;
 				s.write_bytes(writer)?
+			}
+			Target::Object(object_id) => {
+				writer.write_all(&[3])?;
+				object_id.write_bytes(writer)?
 			}
 		};
 		Ok(1 + bytes)

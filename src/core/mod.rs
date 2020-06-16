@@ -16,7 +16,7 @@ pub trait Writable {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Say {
 	pub sayer: Sayer,
-	pub object: ObjName,
+	pub object: ObjectId,
 	pub point: Point,
 	pub target: Option<Target>,
 }
@@ -33,10 +33,18 @@ mod point;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Target {
 	Number(u64),
-	Text(String),
+	String(String),
+	Object(ObjectId),
 }
 
 impl Target {
+	pub fn as_object_id(&self) -> &ObjectId {
+		match self {
+			Target::Object(id) => id,
+			_ => panic!("Target is not an object")
+		}
+	}
+
 	pub fn as_number(&self) -> u64 {
 		match self {
 			Target::Number(n) => *n,
@@ -46,8 +54,16 @@ impl Target {
 
 	pub fn as_str(&self) -> &str {
 		match self {
-			Target::Text(s) => s,
+			Target::String(s) => s,
 			_ => panic!("Target is not text")
+		}
+	}
+
+	pub fn to_string(&self) -> String {
+		match self {
+			Target::Number(n) => format!("{}", n),
+			Target::String(s) => s.to_string(),
+			Target::Object(object_id) => format!("{:?}", object_id),
 		}
 	}
 }
