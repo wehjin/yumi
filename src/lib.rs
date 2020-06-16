@@ -15,7 +15,7 @@ mod chamber;
 mod core;
 mod echo;
 mod object;
-mod util;
+pub mod util;
 pub mod hamt;
 pub mod diary;
 pub mod bytes;
