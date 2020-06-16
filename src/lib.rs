@@ -19,6 +19,3 @@ pub mod util;
 pub mod hamt;
 pub mod diary;
 pub mod bytes;
-
-#[cfg(test)]
-mod counter_tests;

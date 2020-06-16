@@ -2,9 +2,8 @@ use std::{io, thread};
 use std::error::Error;
 use std::sync::mpsc::channel;
 
-use crate::{Echo, ObjectFilter, ObjName, Point, Say, Target, Writable};
-use crate::object::Object;
-use crate::util::random_name;
+use echo_lib::{Echo, Object, ObjectFilter, ObjName, Point, Say, Target, Writable};
+use echo_lib::util::random_name;
 
 const COUNT: Point = Point::Static { name: "count", aspect: "Counter" };
 const MAX_COUNT: Point = Point::Static { name: "max_count", aspect: "Counter" };
@@ -184,4 +183,3 @@ fn target() -> Result<(), Box<dyn Error>> {
 	assert_eq!(old_chamber.target(), None);
 	Ok(())
 }
-
