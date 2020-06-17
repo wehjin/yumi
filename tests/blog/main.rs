@@ -25,10 +25,11 @@ fn review(echo_name: &String) -> Result<(), Box<dyn Error>> {
 
 fn mutate(echo_name: &String) -> Result<(), Box<dyn Error>> {
 	let echo = Echo::connect(&echo_name, &temp_dir());
-	let blogger_id = blogger::create_if_none(&echo).unwrap();
-	let blog_id = blog::create_if_none(&blogger_id, &echo).unwrap();
-	post::create("Elephant ears", "Elephant ears are big.", &blog_id, &echo).unwrap();
-	post::create("Kitten ears", "Kitten ears are cute.", &blog_id, &echo).unwrap();
+	let blogger_id = blogger::create_if_none(&echo)?;
+	let blog_id = blog::create_if_none(&blogger_id, &echo)?;
+	post::create("Elephant ears", "Elephant ears are big.", &blog_id, &echo)?;
+	let post_id = post::create("Kitten ears", "Kitten ears are cute.", &blog_id, &echo)?;
+	assert!(echo.chamber()?.target_at_object_point_or_none(&post_id, post::BLOG_ID).is_some());
 	Ok(())
 }
 

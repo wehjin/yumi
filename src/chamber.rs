@@ -60,24 +60,30 @@ impl Chamber {
 		self.object_properties(&ObjectId::Unit, points)
 	}
 
-	pub fn target(&mut self) -> Option<Target> {
-		self.read_target(&ObjectId::Unit, &Point::Unit).unwrap_or(None)
-	}
-
 	pub fn string(&self, object: &ObjectId, point: &Point) -> String {
-		self.object_point(object, point).as_str().to_string()
+		self.target_at_object_point(object, point).as_str().to_string()
 	}
 
 	pub fn number(&self, object: &ObjectId, point: &Point) -> u64 {
-		self.object_point(object, point).as_number()
+		self.target_at_object_point(object, point).as_number()
 	}
 
 	pub fn object_id(&self, object: &ObjectId, point: &Point) -> ObjectId {
-		self.object_point(object, point).as_object_id().to_owned()
+		self.target_at_object_point(object, point).as_object_id().to_owned()
 	}
 
-	pub fn object_point(&self, object: &ObjectId, point: &Point) -> Target {
-		self.read_target(object, point).unwrap().unwrap()
+	pub fn target_or_none(&mut self) -> Option<Target> {
+		self.target_at_object_point_or_none(&ObjectId::Unit, &Point::Unit)
+	}
+
+	pub fn target_at_object_point(&self, object: &ObjectId, point: &Point) -> Target {
+		let option = self.target_at_object_point_or_none(object, point);
+		option.unwrap()
+	}
+
+	pub fn target_at_object_point_or_none(&self, object: &ObjectId, point: &Point) -> Option<Target> {
+		let option = self.read_target(object, point).unwrap();
+		option
 	}
 
 	fn read_target(&self, object: &ObjectId, point: &Point) -> io::Result<Option<Target>> {

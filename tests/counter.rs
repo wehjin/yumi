@@ -106,7 +106,7 @@ fn double_reconnect() -> Result<(), Box<dyn Error>> {
 	}
 	let echo = Echo::connect(&path, &std::env::temp_dir());
 	let mut chamber = echo.chamber()?;
-	assert_eq!(chamber.target(), Some(Target::Number(10)));
+	assert_eq!(chamber.target_or_none(), Some(Target::Number(10)));
 	Ok(())
 }
 
@@ -123,7 +123,7 @@ fn reconnect() -> Result<(), Box<dyn Error>> {
 	};
 	let echo = Echo::connect(&path, &std::env::temp_dir());
 	let mut chamber = echo.chamber()?;
-	assert_eq!(chamber.target(), Some(Target::Number(10)));
+	assert_eq!(chamber.target_or_none(), Some(Target::Number(10)));
 	Ok(())
 }
 
@@ -179,7 +179,7 @@ fn target() -> Result<(), Box<dyn Error>> {
 		write.target(Target::Number(3))
 	})?;
 	let mut new_chamber = echo.chamber()?;
-	assert_eq!(new_chamber.target(), Some(Target::Number(3)));
-	assert_eq!(old_chamber.target(), None);
+	assert_eq!(new_chamber.target_or_none(), Some(Target::Number(3)));
+	assert_eq!(old_chamber.target_or_none(), None);
 	Ok(())
 }
