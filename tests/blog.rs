@@ -27,7 +27,7 @@ fn ordered_posts(blog_id: &ObjectId, chamber: &Chamber) -> io::Result<Vec<Object
 fn add_post(title: &str, body: &str, blog_id: &ObjectId, echo: &Echo) -> io::Result<ObjectId> {
 	echo.write(|write| {
 		let post_id = write.new_object_id("blog-post");
-		write.object_attributes(&post_id, vec![
+		write.write_object_properties(&post_id, vec![
 			(POST_TITLE, Target::String(title.to_string())),
 			(POST_BODY, Target::String(body.to_string())),
 			(POST_BLOG, Target::Object(blog_id.to_owned())),
@@ -43,7 +43,7 @@ fn init_blog(blogger_id: &ObjectId, echo: &Echo) -> io::Result<ObjectId> {
 		Some(id) => id.clone(),
 		None => echo.write(|write| {
 			let blog_id = write.new_object_id("blog");
-			write.object_attributes(&blog_id, vec![
+			write.write_object_properties(&blog_id, vec![
 				(BLOG_OWNER, Target::Object(blogger_id.to_owned())),
 				(BLOG_TITLE, Target::String("Musings".to_string()))
 			]);
@@ -60,7 +60,7 @@ fn init_blogger(echo: &Echo) -> io::Result<ObjectId> {
 		Some(id) => id.clone(),
 		None => echo.write(|write| {
 			let blogger_id = write.new_object_id("blogger");
-			write.object_attributes(&blogger_id, vec![
+			write.write_object_properties(&blogger_id, vec![
 				(BLOGGER_NAME, Target::String("Alice".to_string()))
 			]);
 			blogger_id

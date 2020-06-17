@@ -133,8 +133,8 @@ fn objects_with_point() -> Result<(), Box<dyn Error>> {
 	let bo_peep = ObjectId::new("Bo Peep");
 	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
 	echo.write(|shout| {
-		shout.object_attributes(&dracula, vec![(&COUNT, Target::Number(3)), ]);
-		shout.object_attributes(&bo_peep, vec![(&COUNT, Target::Number(7)), ]);
+		shout.write_object_properties(&dracula, vec![(&COUNT, Target::Number(3)), ]);
+		shout.write_object_properties(&bo_peep, vec![(&COUNT, Target::Number(7)), ]);
 	})?;
 	let mut objects = echo.chamber()?.objects_with_point(&COUNT)?;
 	objects.sort();
@@ -147,7 +147,7 @@ fn object_attributes() -> Result<(), Box<dyn Error>> {
 	let dracula = ObjectId::String("Dracula".into());
 	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
 	echo.write(|shout| {
-		shout.object_attributes(&dracula, vec![(&COUNT, Target::Number(3))]);
+		shout.write_object_properties(&dracula, vec![(&COUNT, Target::Number(3))]);
 	})?;
 	let attributes = echo.chamber()?.object_properties(&dracula, vec![&COUNT]);
 	assert_eq!(attributes[0], (&COUNT, Some(Target::Number(3))));

@@ -12,15 +12,15 @@ impl WriteScope {
 		self.says(writable.to_says())
 	}
 
-	pub fn object_attributes(&mut self, object: &ObjectId, attributes: Vec<(&Point, Target)>) {
-		for (point, target) in attributes {
+	pub fn write_object_properties(&mut self, object: &ObjectId, properties: Vec<(&Point, Target)>) {
+		for (point, target) in properties {
 			let say = Say { sayer: Sayer::Unit, object: object.to_owned(), point: point.to_owned(), target: Some(target) };
 			self.says.push(say)
 		}
 	}
 
 	pub fn attributes(&mut self, attributes: Vec<(&Point, Target)>) {
-		self.object_attributes(&ObjectId::Unit, attributes)
+		self.write_object_properties(&ObjectId::Unit, attributes)
 	}
 
 	pub fn target(&mut self, target: Target) {
