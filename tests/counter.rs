@@ -82,7 +82,7 @@ fn multi_thread() -> Result<(), Box<dyn Error>> {
 	};
 	job1.join().unwrap()?;
 	job2.join().unwrap()?;
-	let mut chamber = echo.chamber()?;
+	let chamber = echo.chamber()?;
 	let attributes = chamber.properties(vec![&COUNT, &MAX_COUNT]);
 	assert_eq!(attributes.len(), 2);
 	Ok(())
@@ -149,8 +149,8 @@ fn object_attributes() -> Result<(), Box<dyn Error>> {
 	echo.write(|shout| {
 		shout.write_object_properties(&dracula, vec![(&COUNT, Target::Number(3))]);
 	})?;
-	let attributes = echo.chamber()?.object_properties(&dracula, vec![&COUNT]);
-	assert_eq!(attributes[0], (&COUNT, Some(Target::Number(3))));
+	let attributes = echo.chamber()?.targets_at_object_points(&dracula, vec![&COUNT]);
+	assert_eq!(attributes.get(&COUNT), Some(&Target::Number(3)));
 	Ok(())
 }
 

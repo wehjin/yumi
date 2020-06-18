@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io;
 
 use crate::{diary, ObjectId, Point, Target};
@@ -49,14 +50,14 @@ impl Chamber {
 		Ok(objects)
 	}
 
-	pub fn object_properties<'a>(&mut self, object: &'a ObjectId, points: Vec<&'a Point>) -> Vec<(&'a Point, Option<Target>)> {
+	fn object_properties<'a>(&self, object: &'a ObjectId, points: Vec<&'a Point>) -> Vec<(&'a Point, Option<Target>)> {
 		points.into_iter().map(|point| {
 			let target = self.read_target(object, point).unwrap_or(None);
 			(point, target)
 		}).collect()
 	}
 
-	pub fn properties<'a>(&mut self, points: Vec<&'a Point>) -> Vec<(&'a Point, Option<Target>)> {
+	pub fn properties<'a>(&self, points: Vec<&'a Point>) -> Vec<(&'a Point, Option<Target>)> {
 		self.object_properties(&ObjectId::Unit, points)
 	}
 
@@ -72,8 +73,14 @@ impl Chamber {
 		self.target_at_object_point(object, point).as_object_id().to_owned()
 	}
 
-	pub fn target_or_none(&mut self) -> Option<Target> {
-		self.target_at_object_point_or_none(&ObjectId::Unit, &Point::Unit)
+	pub fn targets_at_object_points(&self, object: &ObjectId, points: Vec<&Point>) -> HashMap<Point, Target> {
+		let mut map = HashMap::new();
+		for (point, target) in self.object_properties(object, points) {
+			if let Some(target) = target {
+				map.insert(point.to_owned(), target);
+			}
+		}
+		map
 	}
 
 	pub fn target_at_object_point(&self, object: &ObjectId, point: &Point) -> Target {
@@ -84,6 +91,10 @@ impl Chamber {
 	pub fn target_at_object_point_or_none(&self, object: &ObjectId, point: &Point) -> Option<Target> {
 		let option = self.read_target(object, point).unwrap();
 		option
+	}
+
+	pub fn target_or_none(&mut self) -> Option<Target> {
+		self.target_at_object_point_or_none(&ObjectId::Unit, &Point::Unit)
 	}
 
 	fn read_target(&self, object: &ObjectId, point: &Point) -> io::Result<Option<Target>> {
