@@ -89,6 +89,7 @@ impl Chamber {
 	}
 
 	pub fn target_at_object_point_or_none(&self, object: &ObjectId, point: &Point) -> Option<Target> {
+		//! Acquire some target at a point on an object or nothing.
 		let option = self.read_target(object, point).unwrap();
 		option
 	}

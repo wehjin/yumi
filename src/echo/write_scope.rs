@@ -27,7 +27,7 @@ impl WriteScope {
 		self.attributes(vec![(&Point::Unit, target)])
 	}
 
-	fn says(&mut self, mut says: Vec<Say>) {
-		self.says.append(&mut says);
+	fn says(&mut self, says: Vec<Say>) {
+		self.says.extend(says);
 	}
 }

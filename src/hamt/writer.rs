@@ -12,7 +12,6 @@ use crate::hamt::slot_indexer::SlotIndexer;
 #[cfg(test)]
 mod tests {
 	use std::error::Error;
-	use std::io;
 	use std::path::PathBuf;
 
 	use crate::diary::Diary;
@@ -78,7 +77,7 @@ mod tests {
 		Ok(())
 	}
 
-	fn write_values(root: Root, tasks: Vec<(&mut impl SlotIndexer, u32)>) -> io::Result<(Root, PathBuf)> {
+	fn write_values(root: Root, tasks: Vec<(&mut impl SlotIndexer, u32)>) -> Result<(Root, PathBuf), Box<dyn Error>> {
 		let diary = Diary::temp()?;
 		let mut diary_writer = diary.writer()?;
 		let new_root = {

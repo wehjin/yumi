@@ -3,8 +3,9 @@ use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::string::FromUtf8Error;
 use std::sync::mpsc::RecvError;
+use std::error::Error;
 
-pub(crate) fn temp_dir(prefix: &str) -> io::Result<PathBuf> {
+pub fn temp_dir(prefix: &str) -> Result<PathBuf, Box<dyn Error>> {
 	let mut path = std::env::temp_dir();
 	let string = unique_name(prefix);
 	path.push(&string);
