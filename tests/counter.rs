@@ -2,11 +2,11 @@ use std::{io, thread};
 use std::error::Error;
 use std::sync::mpsc::channel;
 
-use echodb::{Arrow, Echo, Object, ObjectFilter, ObjectId, Point, Say, Writable};
+use echodb::{Arrow, Echo, Object, ObjectFilter, ObjectId, Ring, Say, Writable};
 use echodb::util::unique_name;
 
-const COUNT: Point = Point::Static { name: "count", aspect: "Counter" };
-const MAX_COUNT: Point = Point::Static { name: "max_count", aspect: "Counter" };
+const COUNT: Ring = Ring::Static { name: "count", aspect: "Counter" };
+const MAX_COUNT: Ring = Ring::Static { name: "max_count", aspect: "Counter" };
 
 #[derive(Debug, Eq, PartialEq)]
 struct Counter {
@@ -35,9 +35,9 @@ impl Writable for Counter {
 }
 
 impl<'a> ObjectFilter<'a> for Counter {
-	fn key_point() -> &'a Point { &COUNT }
-	fn data_points() -> &'a [&'a Point] { &[&COUNT, &MAX_COUNT] }
-	fn from_name_and_properties(obj_name: &ObjectId, properties: Vec<(&Point, Option<Arrow>)>) -> Self {
+	fn key_ring() -> &'a Ring { &COUNT }
+	fn data_rings() -> &'a [&'a Ring] { &[&COUNT, &MAX_COUNT] }
+	fn from_name_and_properties(obj_name: &ObjectId, properties: Vec<(&Ring, Option<Arrow>)>) -> Self {
 		let object = Object::new(obj_name, properties);
 		Counter { object }
 	}
@@ -47,7 +47,7 @@ impl<'a> ObjectFilter<'a> for Counter {
 fn filter() {
 	let counter = Counter::new("card-counter", 7, 56);
 	let mut chamber = {
-		let echo = Echo::connect(&unique_name("point-holder"), &std::env::temp_dir());
+		let echo = Echo::connect(&unique_name("x-holder"), &std::env::temp_dir());
 		echo.write(|txn| txn.writable(&counter)).unwrap();
 		echo.chamber().unwrap()
 	};
@@ -130,7 +130,7 @@ fn reconnect() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn objects_with_point() -> Result<(), Box<dyn Error>> {
+fn objects_with_ring() -> Result<(), Box<dyn Error>> {
 	let dracula = ObjectId::new("Dracula");
 	let bo_peep = ObjectId::new("Bo Peep");
 	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
@@ -138,7 +138,7 @@ fn objects_with_point() -> Result<(), Box<dyn Error>> {
 		shout.write_object_properties(&dracula, vec![(&COUNT, Arrow::Number(3))]);
 		shout.write_object_properties(&bo_peep, vec![(&COUNT, Arrow::Number(7))]);
 	})?;
-	let mut objects = echo.chamber()?.objects_with_point(&COUNT)?;
+	let mut objects = echo.chamber()?.objects_with_ring(&COUNT)?;
 	objects.sort();
 	assert_eq!(objects, vec![bo_peep, dracula]);
 	Ok(())
@@ -151,7 +151,7 @@ fn object_attributes() -> Result<(), Box<dyn Error>> {
 	echo.write(|shout| {
 		shout.write_object_properties(&dracula, vec![(&COUNT, Arrow::Number(3))]);
 	})?;
-	let attributes = echo.chamber()?.arrows_at_object_points(&dracula, vec![&COUNT]);
+	let attributes = echo.chamber()?.arrows_at_object_rings(&dracula, vec![&COUNT]);
 	assert_eq!(attributes.get(&COUNT), Some(&Arrow::Number(3)));
 	Ok(())
 }

@@ -1,4 +1,4 @@
-use crate::{ObjectId, Point, Say, Sayer, Arrow, Writable};
+use crate::{ObjectId, Ring, Say, Sayer, Arrow, Writable};
 use crate::util::unique_name;
 
 /// WriteScope allows a function to write facts into the database.
@@ -13,19 +13,19 @@ impl WriteScope {
 		self.says(writable.to_says())
 	}
 
-	pub fn write_object_properties(&mut self, object: &ObjectId, properties: Vec<(&Point, Arrow)>) {
-		for (point, arrow) in properties {
-			let say = Say { sayer: Sayer::Unit, object: object.to_owned(), point: point.to_owned(), arrow: Some(arrow) };
+	pub fn write_object_properties(&mut self, object: &ObjectId, properties: Vec<(&Ring, Arrow)>) {
+		for (ring, arrow) in properties {
+			let say = Say { sayer: Sayer::Unit, object: object.to_owned(), ring: ring.to_owned(), arrow: Some(arrow) };
 			self.says.push(say)
 		}
 	}
 
-	pub fn attributes(&mut self, attributes: Vec<(&Point, Arrow)>) {
+	pub fn attributes(&mut self, attributes: Vec<(&Ring, Arrow)>) {
 		self.write_object_properties(&ObjectId::Unit, attributes)
 	}
 
 	pub fn arrow(&mut self, arrow: Arrow) {
-		self.attributes(vec![(&Point::Unit, arrow)])
+		self.attributes(vec![(&Ring::Unit, arrow)])
 	}
 
 	fn says(&mut self, says: Vec<Say>) {

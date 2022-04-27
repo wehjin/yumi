@@ -2,11 +2,11 @@ use std::hash::Hash;
 
 pub use arrow::*;
 pub use object::*;
-pub use point::*;
+pub use ring::*;
 
 mod arrow;
 mod object;
-mod point;
+mod ring;
 
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -22,7 +22,7 @@ pub trait Writable {
 pub struct Say {
 	pub sayer: Sayer,
 	pub object: ObjectId,
-	pub point: Point,
+	pub ring: Ring,
 	pub arrow: Option<Arrow>,
 }
 

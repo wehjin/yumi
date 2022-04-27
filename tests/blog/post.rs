@@ -1,10 +1,10 @@
 use std::io;
 
-use echodb::{Chamber, Echo, ObjectId, Point, Arrow};
+use echodb::{Chamber, Echo, ObjectId, Ring, Arrow};
 
-pub const TITLE: &Point = &Point::Static { aspect: "BlogPost", name: "title" };
-pub const BODY: &Point = &Point::Static { aspect: "BlogPost", name: "body" };
-pub const BLOG_ID: &Point = &Point::Static { aspect: "BlogPost", name: "blog" };
+pub const TITLE: &Ring = &Ring::Static { aspect: "BlogPost", name: "title" };
+pub const BODY: &Ring = &Ring::Static { aspect: "BlogPost", name: "body" };
+pub const BLOG_ID: &Ring = &Ring::Static { aspect: "BlogPost", name: "blog" };
 
 pub fn read_ordered(blog_id: &ObjectId, chamber: &Chamber) -> io::Result<Vec<ObjectId>> {
 	let mut posts = chamber.objects_with_property(BLOG_ID, &Arrow::Object(blog_id.to_owned()))?;

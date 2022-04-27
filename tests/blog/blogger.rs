@@ -1,8 +1,8 @@
 use std::io;
 
-use echodb::{Chamber, Echo, ObjectId, Point, Arrow};
+use echodb::{Chamber, Echo, ObjectId, Ring, Arrow};
 
-pub const NAME: &Point = &Point::Static { aspect: "Blogger", name: "name" };
+pub const NAME: &Ring = &Ring::Static { aspect: "Blogger", name: "name" };
 
 
 pub fn create_if_none(echo: &Echo) -> io::Result<ObjectId> {
@@ -21,6 +21,6 @@ pub fn create_if_none(echo: &Echo) -> io::Result<ObjectId> {
 }
 
 pub fn read(chamber: &Chamber) -> io::Result<Option<ObjectId>> {
-	let bloggers = chamber.objects_with_point(NAME)?;
+	let bloggers = chamber.objects_with_ring(NAME)?;
 	Ok(bloggers.first().cloned())
 }

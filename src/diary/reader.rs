@@ -3,7 +3,7 @@ use std::io;
 use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
-use crate::{diary, ObjectId, Point, Say, Arrow};
+use crate::{diary, ObjectId, Ring, Say, Arrow};
 use crate::bytes::ReadBytes;
 use crate::Sayer;
 
@@ -17,9 +17,9 @@ impl Reader {
 	pub fn read_say(&mut self, pos: diary::SayPos) -> io::Result<Say> {
 		let sayer = self.read::<Sayer>(pos.sayer)?;
 		let object = self.read::<ObjectId>(pos.object)?;
-		let point = self.read::<Point>(pos.point)?;
+		let ring = self.read::<Ring>(pos.ring)?;
 		let arrow = self.read::<Arrow>(pos.arrow)?;
-		let say = Say { sayer, object, point, arrow: Some(arrow) };
+		let say = Say { sayer, object, ring, arrow: Some(arrow) };
 		Ok(say)
 	}
 

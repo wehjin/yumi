@@ -10,7 +10,7 @@ use std::io;
 use std::io::ErrorKind;
 use std::path::Path;
 
-use crate::{Chamber, Echo, ObjectId, Point, Arrow};
+use crate::{Chamber, Echo, ObjectId, Ring, Arrow};
 
 /// Read values at keys.
 pub struct Catalog {
@@ -39,7 +39,7 @@ impl Catalog {
 	pub fn read<K: Key, V: Value, F: Fn() -> V>(&self, key: &K, fallback: F) -> Result<V, Box<dyn Error>> {
 		//! Read the value at key.
 		let object_id = key_object_id(key);
-		let arrow = self.chamber.arrow_at_object_point_or_none(&object_id, &VALUE_POINT);
+		let arrow = self.chamber.arrow_at_object_ring_or_none(&object_id, &VALUE_RING);
 		match arrow {
 			None => Ok(fallback()),
 			Some(ref arrow) => if let Arrow::String(ref s) = arrow {
@@ -58,7 +58,7 @@ impl Store {
 		self.echo.write(|echo_writer| {
 			let object_id = key_object_id(key);
 			echo_writer.write_object_properties(&object_id, vec![
-				(&VALUE_POINT, Arrow::String(value.to_value_string()))
+				(&VALUE_RING, Arrow::String(value.to_value_string()))
 			]);
 		})?;
 		Ok(())
@@ -70,7 +70,7 @@ impl Store {
 	}
 }
 
-const VALUE_POINT: Point = Point::Static { aspect: "echo::kv", name: "value" };
+const VALUE_RING: Ring = Ring::Static { aspect: "echo::kv", name: "value" };
 
 fn key_object_id<K: Key>(key: &K) -> ObjectId {
 	let key_hash = (key_hash(key) as i64).abs();

@@ -1,9 +1,9 @@
 use std::io;
 
-use echodb::{Chamber, Echo, ObjectId, Point, Arrow};
+use echodb::{Chamber, Echo, ObjectId, Ring, Arrow};
 
-pub const BLOG_TITLE: &Point = &Point::Static { aspect: "Blog", name: "title" };
-pub const BLOG_OWNER: &Point = &Point::Static { aspect: "Blog", name: "owner" };
+pub const BLOG_TITLE: &Ring = &Ring::Static { aspect: "Blog", name: "title" };
+pub const BLOG_OWNER: &Ring = &Ring::Static { aspect: "Blog", name: "owner" };
 
 pub fn create_if_none(blogger_id: &ObjectId, echo: &Echo) -> io::Result<ObjectId> {
 	let old_blog_id = read(blogger_id, &echo.chamber()?)?;

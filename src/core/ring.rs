@@ -5,55 +5,55 @@ use crate::bytes::{ReadBytes, WriteBytes};
 use crate::hamt::Key;
 
 #[derive(Debug, Clone, Eq, Hash)]
-pub enum Point {
+pub enum Ring {
 	Unit,
 	String { aspect: String, name: String },
 	Static { aspect: &'static str, name: &'static str },
 }
 
-impl Key for Point {}
+impl Key for Ring {}
 
-impl Default for Point {
-	fn default() -> Self { Point::Unit }
+impl Default for Ring {
+	fn default() -> Self { Ring::Unit }
 }
 
-impl<S: AsRef<str>> From<(S, S)> for Point {
+impl<S: AsRef<str>> From<(S, S)> for Ring {
 	fn from((name, aspect): (S, S)) -> Self {
-		Point::String {
+		Ring::String {
 			name: name.as_ref().to_owned(),
 			aspect: aspect.as_ref().to_owned(),
 		}
 	}
 }
 
-impl ReadBytes<Point> for Point {
+impl ReadBytes<Ring> for Ring {
 	fn read_bytes(reader: &mut impl Read) -> io::Result<Self> {
 		match u8::read_bytes(reader)? {
-			0 => Ok(Point::Unit),
+			0 => Ok(Ring::Unit),
 			1 | 2 => {
 				let name = String::read_bytes(reader)?;
 				let aspect = String::read_bytes(reader)?;
-				Ok(Point::String { name, aspect })
+				Ok(Ring::String { name, aspect })
 			}
 			_ => unimplemented!()
 		}
 	}
 }
 
-impl WriteBytes for Point {
+impl WriteBytes for Ring {
 	fn write_bytes(&self, writer: &mut impl Write) -> io::Result<usize> {
 		match self {
-			Point::Unit => {
+			Ring::Unit => {
 				writer.write_all(&[0])?;
 				Ok(1)
 			}
-			Point::String { name, aspect } => {
+			Ring::String { name, aspect } => {
 				writer.write_all(&[1])?;
 				let name_len = name.write_bytes(writer)?;
 				let aspect_len = aspect.write_bytes(writer)?;
 				Ok(1 + name_len + aspect_len)
 			}
-			Point::Static { name, aspect } => {
+			Ring::Static { name, aspect } => {
 				writer.write_all(&[2])?;
 				let name_len = name.write_bytes(writer)?;
 				let aspect_len = aspect.write_bytes(writer)?;
@@ -63,23 +63,23 @@ impl WriteBytes for Point {
 	}
 }
 
-impl PartialEq for Point {
+impl PartialEq for Ring {
 	fn eq(&self, other: &Self) -> bool {
 		match self {
-			Point::Unit => match other {
-				Point::Unit => true,
-				Point::String { .. } => false,
-				Point::Static { .. } => false
+			Ring::Unit => match other {
+				Ring::Unit => true,
+				Ring::String { .. } => false,
+				Ring::Static { .. } => false
 			}
-			Point::String { name: name_a, aspect: aspect_a } => match other {
-				Point::Unit => false,
-				Point::String { name, aspect } => name_a == name && aspect_a == aspect,
-				Point::Static { name, aspect } => name_a == name && aspect_a == aspect,
+			Ring::String { name: name_a, aspect: aspect_a } => match other {
+				Ring::Unit => false,
+				Ring::String { name, aspect } => name_a == name && aspect_a == aspect,
+				Ring::Static { name, aspect } => name_a == name && aspect_a == aspect,
 			},
-			Point::Static { name: name_a, aspect: aspect_a } => match other {
-				Point::Unit => false,
-				Point::String { name, aspect } => name_a == name && aspect_a == aspect,
-				Point::Static { name, aspect } => name_a == name && aspect_a == aspect,
+			Ring::Static { name: name_a, aspect: aspect_a } => match other {
+				Ring::Unit => false,
+				Ring::String { name, aspect } => name_a == name && aspect_a == aspect,
+				Ring::Static { name, aspect } => name_a == name && aspect_a == aspect,
 			}
 		}
 	}

@@ -44,7 +44,7 @@ impl Add<Pos> for Pos {
 pub struct SayPos {
 	pub sayer: Pos,
 	pub object: Pos,
-	pub point: Pos,
+	pub ring: Pos,
 	pub arrow: Pos,
 	pub end: Pos,
 }
