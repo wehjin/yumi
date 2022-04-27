@@ -11,23 +11,23 @@ mod ring;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct Speech {
-	pub says: Vec<Say>,
+	pub flights: Vec<Flight>,
 }
 
 pub trait Writable {
-	fn to_says(&self) -> Vec<Say>;
+	fn to_flights(&self) -> Vec<Flight>;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Say {
-	pub sayer: Sayer,
+pub struct Flight {
+	pub archer: Archer,
 	pub target: Target,
 	pub ring: Ring,
 	pub arrow: Option<Arrow>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub enum Sayer {
+pub enum Archer {
 	Unit,
 	Named(String),
 }

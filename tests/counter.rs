@@ -2,7 +2,7 @@ use std::{io, thread};
 use std::error::Error;
 use std::sync::mpsc::channel;
 
-use echodb::{Arrow, Clout, CloutFilter, Echo, Ring, Say, Target, Writable};
+use echodb::{Arrow, Clout, CloutFilter, Echo, Ring, Flight, Target, Writable};
 use echodb::util::unique_name;
 
 const COUNT: Ring = Ring::Static { name: "count", aspect: "Counter" };
@@ -31,7 +31,7 @@ impl Counter {
 }
 
 impl Writable for Counter {
-	fn to_says(&self) -> Vec<Say> { self.clout.to_says() }
+	fn to_flights(&self) -> Vec<Flight> { self.clout.to_flights() }
 }
 
 impl<'a> CloutFilter<'a> for Counter {

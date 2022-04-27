@@ -2,7 +2,7 @@ use std::io;
 use std::io::{Read, Write};
 use std::ops::Deref;
 
-use crate::Sayer;
+use crate::Archer;
 use crate::util::{big_end_first_2, big_end_first_4, big_end_first_8, io_error_of_utf8, u16_of_buf, U32x2, u32x2_of_buf, u64_of_buf};
 
 pub trait WriteBytes {
@@ -13,24 +13,24 @@ pub trait ReadBytes<T> {
 	fn read_bytes(reader: &mut impl Read) -> io::Result<T>;
 }
 
-impl ReadBytes<Sayer> for Sayer {
+impl ReadBytes<Archer> for Archer {
 	fn read_bytes(reader: &mut impl Read) -> io::Result<Self> {
 		match u8::read_bytes(reader)? {
-			0 => Ok(Sayer::Unit),
-			1 => Ok(Sayer::Named(String::read_bytes(reader)?)),
+			0 => Ok(Archer::Unit),
+			1 => Ok(Archer::Named(String::read_bytes(reader)?)),
 			_ => unimplemented!()
 		}
 	}
 }
 
-impl WriteBytes for Sayer {
+impl WriteBytes for Archer {
 	fn write_bytes(&self, writer: &mut impl Write) -> io::Result<usize> {
 		match self {
-			Sayer::Unit => {
+			Archer::Unit => {
 				writer.write_all(&[0])?;
 				Ok(1)
 			}
-			Sayer::Named(name) => {
+			Archer::Named(name) => {
 				writer.write_all(&[1])?;
 				let name_size = name.write_bytes(writer)?;
 				Ok(1 + name_size)

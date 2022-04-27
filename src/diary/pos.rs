@@ -41,8 +41,8 @@ impl Add<Pos> for Pos {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct SayPos {
-	pub sayer: Pos,
+pub struct FlightPos {
+	pub archer: Pos,
 	pub target: Pos,
 	pub ring: Pos,
 	pub arrow: Pos,

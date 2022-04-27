@@ -3,9 +3,9 @@ use std::io;
 use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
-use crate::{diary, Say};
+use crate::{diary, Flight};
 use crate::bytes::WriteBytes;
-use crate::diary::{Pos, SayPos};
+use crate::diary::{Pos, FlightPos};
 
 pub struct Writer {
 	path: PathBuf,
@@ -31,9 +31,9 @@ impl Writer {
 		}
 	}
 
-	pub fn write_say(&mut self, say: &Say) -> io::Result<SayPos> {
+	pub fn write_flight(&mut self, flight: &Flight) -> io::Result<FlightPos> {
 		let start = self.end_size;
-		match self.try_write(say) {
+		match self.try_write(flight) {
 			Ok(pos) => Ok(pos),
 			Err(e) => {
 				self.file.set_len(start as u64)?;
@@ -42,19 +42,19 @@ impl Writer {
 		}
 	}
 
-	fn try_write(&mut self, say: &Say) -> io::Result<SayPos> {
+	fn try_write(&mut self, flight: &Flight) -> io::Result<FlightPos> {
 		let start = self.end_size;
-		let (sayer_start, sayer_size) = self.write(&say.sayer)?;
-		let (target_start, target_size) = self.write(&say.target)?;
-		let (ring_start, ring_size) = self.write(&say.ring)?;
-		let arrow = match &say.arrow {
+		let (archer_start, archer_size) = self.write(&flight.archer)?;
+		let (target_start, target_size) = self.write(&flight.target)?;
+		let (ring_start, ring_size) = self.write(&flight.ring)?;
+		let arrow = match &flight.arrow {
 			None => unimplemented!(),
 			Some(it) => it.clone(),
 		};
 		let (arrow_start, arrow_size) = self.write(&arrow)?;
-		let end = Pos::at(start + sayer_size + target_size + ring_size + arrow_size);
-		let say_pos = SayPos { sayer: sayer_start, target: target_start, ring: ring_start, arrow: arrow_start, end };
-		Ok(say_pos)
+		let end = Pos::at(start + archer_size + target_size + ring_size + arrow_size);
+		let flight_pos = FlightPos { archer: archer_start, target: target_start, ring: ring_start, arrow: arrow_start, end };
+		Ok(flight_pos)
 	}
 
 	pub fn reader(&self) -> io::Result<diary::Reader> {

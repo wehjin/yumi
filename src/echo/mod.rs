@@ -6,7 +6,7 @@ use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
 pub use write_scope::WriteScope;
 
-use crate::{Chamber, diary, hamt, Say, Speech};
+use crate::{Chamber, diary, Flight, hamt, Speech};
 use crate::bytes::{ReadBytes, WriteBytes};
 use crate::diary::Diary;
 use crate::hamt::{Hamt, ProdAB, Root, ROOT_LEN};
@@ -53,9 +53,9 @@ impl Echo {
 	/// Opens a scope for writing facts to the database and provides it to the
 	/// given function.
 	pub fn write<R>(&self, f: impl Fn(&mut WriteScope) -> R) -> io::Result<R> {
-		let mut write = WriteScope { says: Vec::new() };
+		let mut write = WriteScope { flights: Vec::new() };
 		let result = f(&mut write);
-		self.write_speech(Speech { says: write.says })?;
+		self.write_speech(Speech { flights: write.flights })?;
 		Ok(result)
 	}
 
@@ -85,43 +85,43 @@ struct InnerEcho {
 
 impl InnerEcho {
 	fn write_speech(&mut self, speech: Speech) -> io::Result<Chamber> {
-		for say in speech.says.into_iter() {
+		for flight in speech.flights.into_iter() {
 			let mut diary_reader = self.diary_writer.reader()?;
-			self.write_target_rings(&say, &mut diary_reader)?;
-			self.write_ring_targets(&say, &mut diary_reader)?;
+			self.write_target_rings(&flight, &mut diary_reader)?;
+			self.write_ring_targets(&flight, &mut diary_reader)?;
 		}
 		self.diary.commit(self.diary_writer.end_size());
 		self.roots_log.write_roots(self.target_rings.root, self.ring_targets.root)?;
 		self.chamber()
 	}
 
-	fn write_ring_targets(&mut self, say: &Say, diary_reader: &mut diary::Reader) -> io::Result<()> {
-		let target_arrows_root = match self.ring_targets.reader()?.read_value(&say.ring, diary_reader)? {
+	fn write_ring_targets(&mut self, flight: &Flight, diary_reader: &mut diary::Reader) -> io::Result<()> {
+		let target_arrows_root = match self.ring_targets.reader()?.read_value(&flight.ring, diary_reader)? {
 			None => Root::ZERO,
 			Some(root) => root
 		};
 		let mut target_arrows = Hamt::new(target_arrows_root);
-		let arrow = match &say.arrow {
+		let arrow = match &flight.arrow {
 			None => unimplemented!(),
 			Some(it) => it.clone(),
 		};
-		let target_arrow = ProdAB { a: say.target.to_owned(), b: arrow };
-		target_arrows.write_value(&say.target, &target_arrow, &mut self.diary_writer)?;
-		self.ring_targets.write_value(&say.ring, &target_arrows.root, &mut self.diary_writer)
+		let target_arrow = ProdAB { a: flight.target.to_owned(), b: arrow };
+		target_arrows.write_value(&flight.target, &target_arrow, &mut self.diary_writer)?;
+		self.ring_targets.write_value(&flight.ring, &target_arrows.root, &mut self.diary_writer)
 	}
 
-	fn write_target_rings(&mut self, say: &Say, diary_reader: &mut diary::Reader) -> io::Result<()> {
-		let ring_arrows_root = match self.target_rings.reader()?.read_value(&say.target, diary_reader)? {
+	fn write_target_rings(&mut self, flight: &Flight, diary_reader: &mut diary::Reader) -> io::Result<()> {
+		let ring_arrows_root = match self.target_rings.reader()?.read_value(&flight.target, diary_reader)? {
 			None => Root::ZERO,
 			Some(it) => it,
 		};
 		let mut ring_arrows = Hamt::new(ring_arrows_root);
-		let arrow = match &say.arrow {
+		let arrow = match &flight.arrow {
 			None => unimplemented!(),
 			Some(it) => it.clone(),
 		};
-		ring_arrows.write_value(&say.ring, &arrow, &mut self.diary_writer)?;
-		self.target_rings.write_value(&say.target, &ring_arrows.root, &mut self.diary_writer)
+		ring_arrows.write_value(&flight.ring, &arrow, &mut self.diary_writer)?;
+		self.target_rings.write_value(&flight.target, &ring_arrows.root, &mut self.diary_writer)
 	}
 
 	fn chamber(&self) -> io::Result<Chamber> {
