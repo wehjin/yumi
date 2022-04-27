@@ -16,7 +16,7 @@ mod write_scope;
 
 #[derive(Debug, Clone)]
 pub struct Echo {
-	tx: SyncSender<Action>
+	tx: SyncSender<Action>,
 }
 
 enum Action {
@@ -25,27 +25,6 @@ enum Action {
 }
 
 impl Echo {
-	pub fn write<R>(&self, f: impl Fn(&mut WriteScope) -> R) -> io::Result<R> {
-		let mut write = WriteScope { says: Vec::new() };
-		let result = f(&mut write);
-		self.write_speech(Speech { says: write.says })?;
-		Ok(result)
-	}
-
-	fn write_speech(&self, speech: Speech) -> io::Result<Chamber> {
-		let (tx, rx) = channel::<io::Result<Chamber>>();
-		let action = Action::Speech(speech, tx);
-		self.tx.send(action).unwrap();
-		rx.recv().map_err(io_error)?
-	}
-
-	pub fn chamber(&self) -> io::Result<Chamber> {
-		let (tx, rx) = channel::<Chamber>();
-		let action = Action::Latest(tx);
-		self.tx.send(action).unwrap();
-		rx.recv().map_err(io_error)
-	}
-
 	/// Connects to an Echo.
 	pub fn connect(name: &str, folder: &Path) -> Self {
 		let mut folder_path = folder.to_path_buf();
@@ -68,6 +47,30 @@ impl Echo {
 			}
 		});
 		Echo { tx }
+	}
+
+	/// Opens a scope for writing facts to the database and provides it to the
+	/// given function.
+	pub fn write<R>(&self, f: impl Fn(&mut WriteScope) -> R) -> io::Result<R> {
+		let mut write = WriteScope { says: Vec::new() };
+		let result = f(&mut write);
+		self.write_speech(Speech { says: write.says })?;
+		Ok(result)
+	}
+
+	fn write_speech(&self, speech: Speech) -> io::Result<Chamber> {
+		let (tx, rx) = channel::<io::Result<Chamber>>();
+		let action = Action::Speech(speech, tx);
+		self.tx.send(action).unwrap();
+		rx.recv().map_err(io_error)?
+	}
+
+	/// Constructs a chamber for reading facts from the database.
+	pub fn chamber(&self) -> io::Result<Chamber> {
+		let (tx, rx) = channel::<Chamber>();
+		let action = Action::Latest(tx);
+		self.tx.send(action).unwrap();
+		rx.recv().map_err(io_error)
 	}
 }
 
