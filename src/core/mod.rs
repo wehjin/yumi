@@ -1,11 +1,11 @@
 use std::hash::Hash;
 
 pub use arrow::*;
-pub use object::*;
+pub use target::*;
 pub use ring::*;
 
 mod arrow;
-mod object;
+mod target;
 mod ring;
 
 
@@ -21,7 +21,7 @@ pub trait Writable {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Say {
 	pub sayer: Sayer,
-	pub object: ObjectId,
+	pub target: Target,
 	pub ring: Ring,
 	pub arrow: Option<Arrow>,
 }

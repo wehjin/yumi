@@ -2,7 +2,7 @@ use std::{io, thread};
 use std::error::Error;
 use std::sync::mpsc::channel;
 
-use echodb::{Arrow, Echo, Object, ObjectFilter, ObjectId, Ring, Say, Writable};
+use echodb::{Arrow, Clout, CloutFilter, Echo, Ring, Say, Target, Writable};
 use echodb::util::unique_name;
 
 const COUNT: Ring = Ring::Static { name: "count", aspect: "Counter" };
@@ -10,36 +10,36 @@ const MAX_COUNT: Ring = Ring::Static { name: "max_count", aspect: "Counter" };
 
 #[derive(Debug, Eq, PartialEq)]
 struct Counter {
-	object: Object,
+	clout: Clout,
 }
 
 impl Counter {
 	pub fn count(&self) -> u64 {
-		self.object[&COUNT].as_number()
+		self.clout[&COUNT].as_number()
 	}
 
 	pub fn new(name: &str, count: u64, max_count: u64) -> Self {
-		let object = Object::new(
-			&ObjectId::String(name.into()),
+		let clout = Clout::new(
+			&Target::String(name.into()),
 			vec![
 				(&COUNT, Some(Arrow::Number(count))),
 				(&MAX_COUNT, Some(Arrow::Number(max_count))),
 			],
 		);
-		Counter { object }
+		Counter { clout }
 	}
 }
 
 impl Writable for Counter {
-	fn to_says(&self) -> Vec<Say> { self.object.to_says() }
+	fn to_says(&self) -> Vec<Say> { self.clout.to_says() }
 }
 
-impl<'a> ObjectFilter<'a> for Counter {
+impl<'a> CloutFilter<'a> for Counter {
 	fn key_ring() -> &'a Ring { &COUNT }
 	fn data_rings() -> &'a [&'a Ring] { &[&COUNT, &MAX_COUNT] }
-	fn from_name_and_properties(obj_name: &ObjectId, properties: Vec<(&Ring, Option<Arrow>)>) -> Self {
-		let object = Object::new(obj_name, properties);
-		Counter { object }
+	fn from_name_and_properties(target: &Target, properties: Vec<(&Ring, Option<Arrow>)>) -> Self {
+		let clout = Clout::new(target, properties);
+		Counter { clout }
 	}
 }
 
@@ -51,7 +51,7 @@ fn filter() {
 		echo.write(|txn| txn.writable(&counter)).unwrap();
 		echo.chamber().unwrap()
 	};
-	let counters = chamber.objects::<Counter>().unwrap();
+	let counters = chamber.clouts::<Counter>().unwrap();
 	assert_eq!(1, counters.len());
 	let final_counter = &counters[0];
 	assert_eq!(final_counter, &counter);
@@ -130,28 +130,28 @@ fn reconnect() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn objects_with_ring() -> Result<(), Box<dyn Error>> {
-	let dracula = ObjectId::new("Dracula");
-	let bo_peep = ObjectId::new("Bo Peep");
+fn targets_with_ring() -> Result<(), Box<dyn Error>> {
+	let dracula = Target::new("Dracula");
+	let bo_peep = Target::new("Bo Peep");
 	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
 	echo.write(|shout| {
-		shout.write_object_properties(&dracula, vec![(&COUNT, Arrow::Number(3))]);
-		shout.write_object_properties(&bo_peep, vec![(&COUNT, Arrow::Number(7))]);
+		shout.write_target_properties(&dracula, vec![(&COUNT, Arrow::Number(3))]);
+		shout.write_target_properties(&bo_peep, vec![(&COUNT, Arrow::Number(7))]);
 	})?;
-	let mut objects = echo.chamber()?.objects_with_ring(&COUNT)?;
-	objects.sort();
-	assert_eq!(objects, vec![bo_peep, dracula]);
+	let mut targets = echo.chamber()?.targets_with_ring(&COUNT)?;
+	targets.sort();
+	assert_eq!(targets, vec![bo_peep, dracula]);
 	Ok(())
 }
 
 #[test]
-fn object_attributes() -> Result<(), Box<dyn Error>> {
-	let dracula = ObjectId::String("Dracula".into());
+fn target_attributes() -> Result<(), Box<dyn Error>> {
+	let dracula = Target::String("Dracula".into());
 	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
 	echo.write(|shout| {
-		shout.write_object_properties(&dracula, vec![(&COUNT, Arrow::Number(3))]);
+		shout.write_target_properties(&dracula, vec![(&COUNT, Arrow::Number(3))]);
 	})?;
-	let attributes = echo.chamber()?.arrows_at_object_rings(&dracula, vec![&COUNT]);
+	let attributes = echo.chamber()?.arrows_at_target_rings(&dracula, vec![&COUNT]);
 	assert_eq!(attributes.get(&COUNT), Some(&Arrow::Number(3)));
 	Ok(())
 }

@@ -2,20 +2,20 @@ use std::io::{Read, Write};
 use std::io;
 
 use crate::bytes::{ReadBytes, WriteBytes};
-use crate::ObjectId;
+use crate::Target;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Arrow {
 	Number(u64),
 	String(String),
-	Object(ObjectId),
+	Target(Target),
 }
 
 impl Arrow {
-	pub fn as_object_id(&self) -> &ObjectId {
+	pub fn as_target(&self) -> &Target {
 		match self {
-			Arrow::Object(id) => id,
-			_ => panic!("Arrow is not an object")
+			Arrow::Target(target) => target,
+			_ => panic!("Arrow is not a target")
 		}
 	}
 
@@ -37,7 +37,7 @@ impl Arrow {
 		match self {
 			Arrow::Number(n) => format!("{}", n),
 			Arrow::String(s) => s.to_string(),
-			Arrow::Object(object_id) => format!("{:?}", object_id),
+			Arrow::Target(target) => format!("{:?}", target),
 		}
 	}
 }
@@ -54,8 +54,8 @@ impl ReadBytes<Arrow> for Arrow {
 				Ok(Arrow::String(s))
 			}
 			3 => {
-				let object_id = ObjectId::read_bytes(reader)?;
-				Ok(Arrow::Object(object_id))
+				let target = Target::read_bytes(reader)?;
+				Ok(Arrow::Target(target))
 			}
 			_ => unimplemented!()
 		}
@@ -74,9 +74,9 @@ impl WriteBytes for Arrow {
 				writer.write_all(&[2])?;
 				s.write_bytes(writer)?
 			}
-			Arrow::Object(object_id) => {
+			Arrow::Target(target) => {
 				writer.write_all(&[3])?;
-				object_id.write_bytes(writer)?
+				target.write_bytes(writer)?
 			}
 		};
 		Ok(1 + bytes)

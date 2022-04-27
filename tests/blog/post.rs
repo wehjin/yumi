@@ -1,25 +1,25 @@
 use std::io;
 
-use echodb::{Chamber, Echo, ObjectId, Ring, Arrow};
+use echodb::{Arrow, Chamber, Echo, Ring, Target};
 
 pub const TITLE: &Ring = &Ring::Static { aspect: "BlogPost", name: "title" };
 pub const BODY: &Ring = &Ring::Static { aspect: "BlogPost", name: "body" };
 pub const BLOG_ID: &Ring = &Ring::Static { aspect: "BlogPost", name: "blog" };
 
-pub fn read_ordered(blog_id: &ObjectId, chamber: &Chamber) -> io::Result<Vec<ObjectId>> {
-	let mut posts = chamber.objects_with_property(BLOG_ID, &Arrow::Object(blog_id.to_owned()))?;
+pub fn read_ordered(blog: &Target, chamber: &Chamber) -> io::Result<Vec<Target>> {
+	let mut posts = chamber.targets_with_property(BLOG_ID, &Arrow::Target(blog.to_owned()))?;
 	posts.sort_by_key(|it| chamber.string(it, TITLE));
 	Ok(posts)
 }
 
-pub fn create(title: &str, body: &str, blog_id: &ObjectId, echo: &Echo) -> io::Result<ObjectId> {
+pub fn create(title: &str, body: &str, blog: &Target, echo: &Echo) -> io::Result<Target> {
 	echo.write(|write| {
-		let post_id = write.new_object_id("blog-post");
-		write.write_object_properties(&post_id, vec![
+		let post = write.new_target("blog-post");
+		write.write_target_properties(&post, vec![
 			(TITLE, Arrow::String(title.to_string())),
 			(BODY, Arrow::String(body.to_string())),
-			(BLOG_ID, Arrow::Object(blog_id.to_owned())),
+			(BLOG_ID, Arrow::Target(blog.to_owned())),
 		]);
-		post_id
+		post
 	})
 }

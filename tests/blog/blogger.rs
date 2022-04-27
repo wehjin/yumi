@@ -1,26 +1,26 @@
 use std::io;
 
-use echodb::{Chamber, Echo, ObjectId, Ring, Arrow};
+use echodb::{Chamber, Echo, Target, Ring, Arrow};
 
 pub const NAME: &Ring = &Ring::Static { aspect: "Blogger", name: "name" };
 
 
-pub fn create_if_none(echo: &Echo) -> io::Result<ObjectId> {
-	let old_blogger_id = read(&echo.chamber()?)?;
-	let blogger_id = match old_blogger_id {
-		Some(id) => id.clone(),
+pub fn create_if_none(echo: &Echo) -> io::Result<Target> {
+	let old_blogger = read(&echo.chamber()?)?;
+	let blogger = match old_blogger {
+		Some(target) => target.clone(),
 		None => echo.write(|write| {
-			let blogger_id = write.new_object_id("blogger");
-			write.write_object_properties(&blogger_id, vec![
+			let blogger = write.new_target("blogger");
+			write.write_target_properties(&blogger, vec![
 				(NAME, Arrow::String("Alice".to_string()))
 			]);
-			blogger_id
+			blogger
 		})?,
 	};
-	Ok(blogger_id)
+	Ok(blogger)
 }
 
-pub fn read(chamber: &Chamber) -> io::Result<Option<ObjectId>> {
-	let bloggers = chamber.objects_with_ring(NAME)?;
+pub fn read(chamber: &Chamber) -> io::Result<Option<Target>> {
+	let bloggers = chamber.targets_with_ring(NAME)?;
 	Ok(bloggers.first().cloned())
 }

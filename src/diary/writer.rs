@@ -45,15 +45,15 @@ impl Writer {
 	fn try_write(&mut self, say: &Say) -> io::Result<SayPos> {
 		let start = self.end_size;
 		let (sayer_start, sayer_size) = self.write(&say.sayer)?;
-		let (object_start, object_size) = self.write(&say.object)?;
+		let (target_start, target_size) = self.write(&say.target)?;
 		let (ring_start, ring_size) = self.write(&say.ring)?;
 		let arrow = match &say.arrow {
 			None => unimplemented!(),
 			Some(it) => it.clone(),
 		};
 		let (arrow_start, arrow_size) = self.write(&arrow)?;
-		let end = Pos::at(start + sayer_size + object_size + ring_size + arrow_size);
-		let say_pos = SayPos { sayer: sayer_start, object: object_start, ring: ring_start, arrow: arrow_start, end };
+		let end = Pos::at(start + sayer_size + target_size + ring_size + arrow_size);
+		let say_pos = SayPos { sayer: sayer_start, target: target_start, ring: ring_start, arrow: arrow_start, end };
 		Ok(say_pos)
 	}
 

@@ -9,11 +9,11 @@ extern crate rand;
 pub use self::chamber::*;
 pub use self::core::*;
 pub use self::echo::*;
-pub use self::object::*;
+pub use self::clout::*;
 
 mod chamber;
 mod core;
-mod object;
+mod clout;
 mod echo;
 pub mod util;
 pub mod hamt;

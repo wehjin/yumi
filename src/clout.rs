@@ -1,60 +1,60 @@
 use std::collections::HashMap;
 use std::ops::Index;
 
-use crate::{ObjectId, Ring, Say, Sayer, Arrow, Writable};
+use crate::{Arrow, Ring, Say, Sayer, Target, Writable};
 
 #[cfg(test)]
 mod tests {
-	use crate::{Object, ObjectId, Ring, Arrow};
+	use crate::{Arrow, Clout, Ring, Target};
 
 	const COUNT: Ring = Ring::Static { name: "count", aspect: "Counter" };
 
 	#[test]
 	fn index() {
-		let object = Object::new(
-			&ObjectId::String("MyCounter".into()),
+		let clout = Clout::new(
+			&Target::String("MyCounter".into()),
 			vec![(&COUNT, Some(Arrow::Number(17)))],
 		);
-		let count = &object[&COUNT];
+		let count = &clout[&COUNT];
 		assert_eq!(count, &Arrow::Number(17))
 	}
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Object {
-	pub id: ObjectId,
+pub struct Clout {
+	pub target: Target,
 	pub properties: HashMap<Ring, Arrow>,
 }
 
-impl Object {
+impl Clout {
 	pub fn insert(&mut self, ring: &Ring, arrow: Arrow) {
 		let mut properties = self.properties.clone();
 		properties.insert(ring.clone(), arrow);
 		self.properties = properties
 	}
-	pub fn new(object_id: &ObjectId, properties: Vec<(&Ring, Option<Arrow>)>) -> Self {
+	pub fn new(target: &Target, properties: Vec<(&Ring, Option<Arrow>)>) -> Self {
 		let mut map = HashMap::new();
 		for (ring, arrow) in properties {
 			if let Some(arrow) = arrow {
 				map.insert(ring.to_owned(), arrow);
 			}
 		}
-		Object { id: object_id.to_owned(), properties: map }
+		Clout { target: target.to_owned(), properties: map }
 	}
-	pub fn new_with_id(object_id: &ObjectId) -> Self { Object { id: object_id.to_owned(), properties: HashMap::new() } }
+	pub fn new_with_target(target: &Target) -> Self { Clout { target: target.to_owned(), properties: HashMap::new() } }
 }
 
-impl Index<&Ring> for Object {
+impl Index<&Ring> for Clout {
 	type Output = Arrow;
 	fn index(&self, index: &Ring) -> &Self::Output { &self.properties[index] }
 }
 
-impl Writable for Object {
+impl Writable for Clout {
 	fn to_says(&self) -> Vec<Say> {
 		self.properties.keys()
 			.map(|ring| Say {
 				sayer: Sayer::Unit,
-				object: self.id.to_owned(),
+				target: self.target.to_owned(),
 				ring: ring.to_owned(),
 				arrow: self.properties.get(ring).map(Arrow::to_owned),
 			})

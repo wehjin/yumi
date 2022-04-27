@@ -1,81 +1,81 @@
 use std::collections::HashMap;
 use std::io;
 
-use crate::{diary, ObjectId, Ring, Arrow};
+use crate::{Arrow, diary, Ring, Target};
 use crate::hamt::{Hamt, ProdAB, Reader, Root};
 
 pub struct Chamber {
-	pub(crate) object_rings_reader: Reader,
-	pub(crate) ring_objects_reader: Reader,
+	pub(crate) target_rings_reader: Reader,
+	pub(crate) ring_targets_reader: Reader,
 	pub(crate) diary_reader: diary::Reader,
 }
 
 
 impl Chamber {
-	pub fn objects<'a, F: ObjectFilter<'a>>(&mut self) -> io::Result<Vec<F>> {
-		let obj_names = self.objects_with_ring(F::key_ring())?;
-		let objects = obj_names.into_iter()
-			.map(|obj_name| {
-				let properties = self.object_properties(&obj_name, F::data_rings().to_vec());
-				F::from_name_and_properties(&obj_name, properties)
+	pub fn clouts<'a, F: CloutFilter<'a>>(&mut self) -> io::Result<Vec<F>> {
+		let targets = self.targets_with_ring(F::key_ring())?;
+		let clouts = targets.into_iter()
+			.map(|target| {
+				let properties = self.target_properties(&target, F::data_rings().to_vec());
+				F::from_name_and_properties(&target, properties)
 			}).collect::<Vec<_>>();
-		Ok(objects)
+		Ok(clouts)
 	}
 
-	pub fn objects_with_property(&self, ring: &Ring, arrow: &Arrow) -> io::Result<Vec<ObjectId>> {
-		let mut matching_objects = Vec::new();
-		for object in self.objects_with_ring(ring)? {
-			if arrow.eq(&self.read_arrow(&object, ring)?.unwrap()) {
-				matching_objects.push(object)
+	pub fn targets_with_property(&self, ring: &Ring, arrow: &Arrow) -> io::Result<Vec<Target>> {
+		let mut matching_targets = Vec::new();
+		for target in self.targets_with_ring(ring)? {
+			if arrow.eq(&self.read_arrow(&target, ring)?.unwrap()) {
+				matching_targets.push(target)
 			}
 		}
-		Ok(matching_objects)
+		Ok(matching_targets)
 	}
 
-	pub fn objects_with_ring(&self, ring: &Ring) -> io::Result<Vec<ObjectId>> {
+	pub fn targets_with_ring(&self, ring: &Ring) -> io::Result<Vec<Target>> {
 		let mut diary_reader = self.diary_reader.clone();
-		self.inner_objects_with_ring(ring, &mut diary_reader)
+		self.inner_targets_with_ring(ring, &mut diary_reader)
 	}
 
-	fn inner_objects_with_ring(&self, ring: &Ring, reader: &mut diary::Reader) -> io::Result<Vec<ObjectId>> {
-		let objects_root: Option<Root> = self.ring_objects_reader.read_value(ring, reader)?;
-		let objects = match objects_root {
+	fn inner_targets_with_ring(&self, ring: &Ring, reader: &mut diary::Reader) -> io::Result<Vec<Target>> {
+		let targets_root: Option<Root> = self.ring_targets_reader.read_value(ring, reader)?;
+		let targets = match targets_root {
 			None => Vec::new(),
 			Some(root) => {
-				let object_arrow_reader = Hamt::new(root).reader()?;
-				let object_arrow = object_arrow_reader.read_all::<ProdAB<ObjectId, Arrow>>(reader)?;
-				object_arrow.into_iter().map(|it| it.a).collect()
+				let target_arrow_reader = Hamt::new(root).reader()?;
+				let target_arrow = target_arrow_reader.read_all::<ProdAB<Target, Arrow>>(reader)?;
+				target_arrow.into_iter().map(|it| it.a).collect()
 			}
 		};
-		Ok(objects)
+		Ok(targets)
 	}
 
-	fn object_properties<'a>(&self, object: &'a ObjectId, rings: Vec<&'a Ring>) -> Vec<(&'a Ring, Option<Arrow>)> {
+	fn target_properties<'a>(&self, target: &'a Target, rings: Vec<&'a Ring>) -> Vec<(&'a Ring, Option<Arrow>)> {
 		rings.into_iter().map(|ring| {
-			let arrow = self.read_arrow(object, ring).unwrap_or(None);
+			let arrow = self.read_arrow(target, ring).unwrap_or(None);
 			(ring, arrow)
 		}).collect()
 	}
 
 	pub fn properties<'a>(&self, rings: Vec<&'a Ring>) -> Vec<(&'a Ring, Option<Arrow>)> {
-		self.object_properties(&ObjectId::Unit, rings)
+		self.target_properties(&Target::Unit, rings)
 	}
 
-	pub fn string(&self, object: &ObjectId, ring: &Ring) -> String {
-		self.arrow_at_object_ring(object, ring).as_str().to_string()
+	pub fn string(&self, target: &Target, ring: &Ring) -> String {
+		self.arrow_at_target_ring(target, ring).as_str().to_string()
 	}
 
-	pub fn number(&self, object: &ObjectId, ring: &Ring) -> u64 {
-		self.arrow_at_object_ring(object, ring).as_number()
+	pub fn number(&self, target: &Target, ring: &Ring) -> u64 {
+		self.arrow_at_target_ring(target, ring).as_number()
 	}
 
-	pub fn object_id(&self, object: &ObjectId, ring: &Ring) -> ObjectId {
-		self.arrow_at_object_ring(object, ring).as_object_id().to_owned()
+	pub fn target(&self, target: &Target, ring: &Ring) -> Target {
+		self.arrow_at_target_ring(target, ring).as_target().to_owned()
 	}
 
-	pub fn arrows_at_object_rings(&self, object: &ObjectId, rings: Vec<&Ring>) -> HashMap<Ring, Arrow> {
+	pub fn arrows_at_target_rings(&self, target: &Target, rings: Vec<&Ring>) -> HashMap<Ring, Arrow> {
 		let mut map = HashMap::new();
-		for (ring, arrow) in self.object_properties(object, rings) {
+		for (ring, arrow) in self.target_properties(target, rings) {
 			if let Some(arrow) = arrow {
 				map.insert(ring.to_owned(), arrow);
 			}
@@ -83,24 +83,24 @@ impl Chamber {
 		map
 	}
 
-	pub fn arrow_at_object_ring(&self, object: &ObjectId, ring: &Ring) -> Arrow {
-		let option = self.arrow_at_object_ring_or_none(object, ring);
+	pub fn arrow_at_target_ring(&self, target: &Target, ring: &Ring) -> Arrow {
+		let option = self.arrow_at_target_ring_or_none(target, ring);
 		option.unwrap()
 	}
 
-	pub fn arrow_at_object_ring_or_none(&self, object: &ObjectId, ring: &Ring) -> Option<Arrow> {
-		//! Acquire some arrow at a ring on an object or nothing.
-		let option = self.read_arrow(object, ring).unwrap();
+	pub fn arrow_at_target_ring_or_none(&self, target: &Target, ring: &Ring) -> Option<Arrow> {
+		//! Acquire some arrow at a ring on an target or nothing.
+		let option = self.read_arrow(target, ring).unwrap();
 		option
 	}
 
 	pub fn arrow_or_none(&mut self) -> Option<Arrow> {
-		self.arrow_at_object_ring_or_none(&ObjectId::Unit, &Ring::Unit)
+		self.arrow_at_target_ring_or_none(&Target::Unit, &Ring::Unit)
 	}
 
-	fn read_arrow(&self, object: &ObjectId, ring: &Ring) -> io::Result<Option<Arrow>> {
+	fn read_arrow(&self, target: &Target, ring: &Ring) -> io::Result<Option<Arrow>> {
 		let mut reader = self.diary_reader.clone();
-		let root: Option<Root> = self.object_rings_reader.read_value(object, &mut reader)?;
+		let root: Option<Root> = self.target_rings_reader.read_value(target, &mut reader)?;
 		match root {
 			None => Ok(None),
 			Some(root) => {
@@ -111,8 +111,8 @@ impl Chamber {
 	}
 }
 
-pub trait ObjectFilter<'a> {
+pub trait CloutFilter<'a> {
 	fn key_ring() -> &'a Ring;
 	fn data_rings() -> &'a [&'a Ring];
-	fn from_name_and_properties(obj_name: &ObjectId, properties: Vec<(&Ring, Option<Arrow>)>) -> Self;
+	fn from_name_and_properties(target: &Target, properties: Vec<(&Ring, Option<Arrow>)>) -> Self;
 }

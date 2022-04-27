@@ -10,7 +10,7 @@ use std::io;
 use std::io::ErrorKind;
 use std::path::Path;
 
-use crate::{Chamber, Echo, ObjectId, Ring, Arrow};
+use crate::{Chamber, Echo, Target, Ring, Arrow};
 
 /// Read values at keys.
 pub struct Catalog {
@@ -38,8 +38,8 @@ pub fn open(name: &str, folder: &Path) -> Result<Store, Box<dyn Error>> {
 impl Catalog {
 	pub fn read<K: Key, V: Value, F: Fn() -> V>(&self, key: &K, fallback: F) -> Result<V, Box<dyn Error>> {
 		//! Read the value at key.
-		let object_id = key_object_id(key);
-		let arrow = self.chamber.arrow_at_object_ring_or_none(&object_id, &VALUE_RING);
+		let target = key_target(key);
+		let arrow = self.chamber.arrow_at_target_ring_or_none(&target, &VALUE_RING);
 		match arrow {
 			None => Ok(fallback()),
 			Some(ref arrow) => if let Arrow::String(ref s) = arrow {
@@ -56,8 +56,8 @@ impl Store {
 	pub fn write(&self, key: &impl Key, value: &impl Value) -> Result<(), Box<dyn Error>> {
 		//! Assign a value to a key.
 		self.echo.write(|echo_writer| {
-			let object_id = key_object_id(key);
-			echo_writer.write_object_properties(&object_id, vec![
+			let target = key_target(key);
+			echo_writer.write_target_properties(&target, vec![
 				(&VALUE_RING, Arrow::String(value.to_value_string()))
 			]);
 		})?;
@@ -72,10 +72,10 @@ impl Store {
 
 const VALUE_RING: Ring = Ring::Static { aspect: "echo::kv", name: "value" };
 
-fn key_object_id<K: Key>(key: &K) -> ObjectId {
+fn key_target<K: Key>(key: &K) -> Target {
 	let key_hash = (key_hash(key) as i64).abs();
 	let string = format!("key-{}", key_hash);
-	ObjectId::String(string)
+	Target::String(string)
 }
 
 fn key_hash<K: Key>(key: &K) -> u64 {

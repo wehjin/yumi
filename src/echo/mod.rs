@@ -78,8 +78,8 @@ impl Echo {
 struct InnerEcho {
 	diary: Diary,
 	diary_writer: diary::Writer,
-	object_rings: Hamt,
-	ring_objects: Hamt,
+	target_rings: Hamt,
+	ring_targets: Hamt,
 	roots_log: RootsLog,
 }
 
@@ -87,31 +87,31 @@ impl InnerEcho {
 	fn write_speech(&mut self, speech: Speech) -> io::Result<Chamber> {
 		for say in speech.says.into_iter() {
 			let mut diary_reader = self.diary_writer.reader()?;
-			self.write_object_rings(&say, &mut diary_reader)?;
-			self.write_ring_objects(&say, &mut diary_reader)?;
+			self.write_target_rings(&say, &mut diary_reader)?;
+			self.write_ring_targets(&say, &mut diary_reader)?;
 		}
 		self.diary.commit(self.diary_writer.end_size());
-		self.roots_log.write_roots(self.object_rings.root, self.ring_objects.root)?;
+		self.roots_log.write_roots(self.target_rings.root, self.ring_targets.root)?;
 		self.chamber()
 	}
 
-	fn write_ring_objects(&mut self, say: &Say, diary_reader: &mut diary::Reader) -> io::Result<()> {
-		let object_arrows_root = match self.ring_objects.reader()?.read_value(&say.ring, diary_reader)? {
+	fn write_ring_targets(&mut self, say: &Say, diary_reader: &mut diary::Reader) -> io::Result<()> {
+		let target_arrows_root = match self.ring_targets.reader()?.read_value(&say.ring, diary_reader)? {
 			None => Root::ZERO,
 			Some(root) => root
 		};
-		let mut object_arrows = Hamt::new(object_arrows_root);
+		let mut target_arrows = Hamt::new(target_arrows_root);
 		let arrow = match &say.arrow {
 			None => unimplemented!(),
 			Some(it) => it.clone(),
 		};
-		let object_arrow = ProdAB { a: say.object.to_owned(), b: arrow };
-		object_arrows.write_value(&say.object, &object_arrow, &mut self.diary_writer)?;
-		self.ring_objects.write_value(&say.ring, &object_arrows.root, &mut self.diary_writer)
+		let target_arrow = ProdAB { a: say.target.to_owned(), b: arrow };
+		target_arrows.write_value(&say.target, &target_arrow, &mut self.diary_writer)?;
+		self.ring_targets.write_value(&say.ring, &target_arrows.root, &mut self.diary_writer)
 	}
 
-	fn write_object_rings(&mut self, say: &Say, diary_reader: &mut diary::Reader) -> io::Result<()> {
-		let ring_arrows_root = match self.object_rings.reader()?.read_value(&say.object, diary_reader)? {
+	fn write_target_rings(&mut self, say: &Say, diary_reader: &mut diary::Reader) -> io::Result<()> {
+		let ring_arrows_root = match self.target_rings.reader()?.read_value(&say.target, diary_reader)? {
 			None => Root::ZERO,
 			Some(it) => it,
 		};
@@ -121,13 +121,13 @@ impl InnerEcho {
 			Some(it) => it.clone(),
 		};
 		ring_arrows.write_value(&say.ring, &arrow, &mut self.diary_writer)?;
-		self.object_rings.write_value(&say.object, &ring_arrows.root, &mut self.diary_writer)
+		self.target_rings.write_value(&say.target, &ring_arrows.root, &mut self.diary_writer)
 	}
 
 	fn chamber(&self) -> io::Result<Chamber> {
 		let chamber = Chamber {
-			ring_objects_reader: self.ring_objects.reader()?,
-			object_rings_reader: self.object_rings.reader()?,
+			ring_targets_reader: self.ring_targets.reader()?,
+			target_rings_reader: self.target_rings.reader()?,
 			diary_reader: self.diary.reader()?,
 		};
 		Ok(chamber)
@@ -137,10 +137,10 @@ impl InnerEcho {
 		let diary = Diary::load(&file_path("diary.dat", &folder_path)).unwrap();
 		let diary_writer = diary.writer().unwrap();
 		let roots_log = RootsLog::new(&folder_path).unwrap();
-		let (object_rings_root, ring_objects_root) = roots_log.roots;
-		let object_rings = Hamt::new(object_rings_root);
-		let ring_objects = Hamt::new(ring_objects_root);
-		InnerEcho { diary, diary_writer, object_rings, ring_objects, roots_log }
+		let (target_rings_root, ring_targets_root) = roots_log.roots;
+		let target_rings = Hamt::new(target_rings_root);
+		let ring_targets = Hamt::new(ring_targets_root);
+		InnerEcho { diary, diary_writer, target_rings, ring_targets, roots_log }
 	}
 }
 
