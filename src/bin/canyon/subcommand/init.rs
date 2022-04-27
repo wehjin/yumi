@@ -4,8 +4,9 @@ use std::io;
 use std::io::{ErrorKind, Write};
 
 use clap::Command;
+use rand::random;
 
-use crate::init::settings::{Settings, Version};
+use crate::init::settings::{IngressSettings, Settings};
 
 mod settings;
 
@@ -16,7 +17,7 @@ pub fn cli() -> Command<'static> {
 
 pub fn main() -> Result<(), Box<dyn Error>> {
 	let settings = Settings {
-		version: Version { major: 1, minor: 0 }
+		ingress: IngressSettings { user_codes: vec![random()] }
 	};
 	let settings = toml::to_string_pretty(&settings).expect("toml for Settings");
 	let path = "Canyon.toml";
@@ -30,7 +31,6 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 			} else { e }
 		)?;
 	file.write_all(settings.as_bytes())?;
-	println!("{}", settings);
 	Ok(())
 }
 
