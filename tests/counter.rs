@@ -2,14 +2,16 @@ use std::{io, thread};
 use std::error::Error;
 use std::sync::mpsc::channel;
 
-use echodb::{Echo, Object, ObjectFilter, ObjectId, Point, Say, Target, Writable};
+use echodb::{Arrow, Echo, Object, ObjectFilter, ObjectId, Point, Say, Writable};
 use echodb::util::unique_name;
 
 const COUNT: Point = Point::Static { name: "count", aspect: "Counter" };
 const MAX_COUNT: Point = Point::Static { name: "max_count", aspect: "Counter" };
 
 #[derive(Debug, Eq, PartialEq)]
-struct Counter { object: Object }
+struct Counter {
+	object: Object,
+}
 
 impl Counter {
 	pub fn count(&self) -> u64 {
@@ -20,8 +22,8 @@ impl Counter {
 		let object = Object::new(
 			&ObjectId::String(name.into()),
 			vec![
-				(&COUNT, Some(Target::Number(count))),
-				(&MAX_COUNT, Some(Target::Number(max_count)))
+				(&COUNT, Some(Arrow::Number(count))),
+				(&MAX_COUNT, Some(Arrow::Number(max_count))),
 			],
 		);
 		Counter { object }
@@ -35,7 +37,7 @@ impl Writable for Counter {
 impl<'a> ObjectFilter<'a> for Counter {
 	fn key_point() -> &'a Point { &COUNT }
 	fn data_points() -> &'a [&'a Point] { &[&COUNT, &MAX_COUNT] }
-	fn from_name_and_properties(obj_name: &ObjectId, properties: Vec<(&Point, Option<Target>)>) -> Self {
+	fn from_name_and_properties(obj_name: &ObjectId, properties: Vec<(&Point, Option<Arrow>)>) -> Self {
 		let object = Object::new(obj_name, properties);
 		Counter { object }
 	}
@@ -63,7 +65,7 @@ fn multi_thread() -> Result<(), Box<dyn Error>> {
 		let echo = echo.clone();
 		thread::spawn(move || {
 			echo.write(|write| {
-				write.attributes(vec![(&COUNT, Target::Number(1))])
+				write.attributes(vec![(&COUNT, Arrow::Number(1))])
 			})
 		})
 	};
@@ -72,7 +74,7 @@ fn multi_thread() -> Result<(), Box<dyn Error>> {
 		let job = thread::spawn(move || {
 			for echo in rx {
 				echo.write(|write| {
-					write.attributes(vec![(&MAX_COUNT, Target::Number(100))])
+					write.attributes(vec![(&MAX_COUNT, Arrow::Number(100))])
 				}).unwrap();
 			}
 			Ok(()) as io::Result<()>
@@ -94,19 +96,19 @@ fn double_reconnect() -> Result<(), Box<dyn Error>> {
 		let path = unique_name("echo-test-");
 		let echo = Echo::connect(&path, &std::env::temp_dir());
 		echo.write(|write| {
-			write.target(Target::Number(3));
+			write.arrow(Arrow::Number(3));
 		})?;
 		path
 	};
 	{
 		let echo = Echo::connect(&path, &std::env::temp_dir());
 		echo.write(|write| {
-			write.target(Target::Number(10));
+			write.arrow(Arrow::Number(10));
 		})?;
 	}
 	let echo = Echo::connect(&path, &std::env::temp_dir());
 	let mut chamber = echo.chamber()?;
-	assert_eq!(chamber.target_or_none(), Some(Target::Number(10)));
+	assert_eq!(chamber.arrow_or_none(), Some(Arrow::Number(10)));
 	Ok(())
 }
 
@@ -116,14 +118,14 @@ fn reconnect() -> Result<(), Box<dyn Error>> {
 		let path = unique_name("echo-test-");
 		let echo = Echo::connect(&path, &std::env::temp_dir());
 		echo.write(|write| {
-			write.target(Target::Number(3));
-			write.target(Target::Number(10));
+			write.arrow(Arrow::Number(3));
+			write.arrow(Arrow::Number(10));
 		})?;
 		path
 	};
 	let echo = Echo::connect(&path, &std::env::temp_dir());
 	let mut chamber = echo.chamber()?;
-	assert_eq!(chamber.target_or_none(), Some(Target::Number(10)));
+	assert_eq!(chamber.arrow_or_none(), Some(Arrow::Number(10)));
 	Ok(())
 }
 
@@ -133,8 +135,8 @@ fn objects_with_point() -> Result<(), Box<dyn Error>> {
 	let bo_peep = ObjectId::new("Bo Peep");
 	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
 	echo.write(|shout| {
-		shout.write_object_properties(&dracula, vec![(&COUNT, Target::Number(3)), ]);
-		shout.write_object_properties(&bo_peep, vec![(&COUNT, Target::Number(7)), ]);
+		shout.write_object_properties(&dracula, vec![(&COUNT, Arrow::Number(3))]);
+		shout.write_object_properties(&bo_peep, vec![(&COUNT, Arrow::Number(7))]);
 	})?;
 	let mut objects = echo.chamber()?.objects_with_point(&COUNT)?;
 	objects.sort();
@@ -147,10 +149,10 @@ fn object_attributes() -> Result<(), Box<dyn Error>> {
 	let dracula = ObjectId::String("Dracula".into());
 	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
 	echo.write(|shout| {
-		shout.write_object_properties(&dracula, vec![(&COUNT, Target::Number(3))]);
+		shout.write_object_properties(&dracula, vec![(&COUNT, Arrow::Number(3))]);
 	})?;
-	let attributes = echo.chamber()?.targets_at_object_points(&dracula, vec![&COUNT]);
-	assert_eq!(attributes.get(&COUNT), Some(&Target::Number(3)));
+	let attributes = echo.chamber()?.arrows_at_object_points(&dracula, vec![&COUNT]);
+	assert_eq!(attributes.get(&COUNT), Some(&Arrow::Number(3)));
 	Ok(())
 }
 
@@ -159,27 +161,27 @@ fn attributes() -> Result<(), Box<dyn Error>> {
 	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
 	echo.write(|shout| {
 		shout.attributes(vec![
-			(&MAX_COUNT, Target::Number(100)),
-			(&COUNT, Target::Number(0))
+			(&MAX_COUNT, Arrow::Number(100)),
+			(&COUNT, Arrow::Number(0)),
 		]);
 	})?;
 	let attributes = echo.chamber()?.properties(vec![&MAX_COUNT, &COUNT]);
 	assert_eq!(attributes, vec![
-		(&MAX_COUNT, Some(Target::Number(100))),
-		(&COUNT, Some(Target::Number(0)))
+		(&MAX_COUNT, Some(Arrow::Number(100))),
+		(&COUNT, Some(Arrow::Number(0))),
 	]);
 	Ok(())
 }
 
 #[test]
-fn target() -> Result<(), Box<dyn Error>> {
+fn arrow() -> Result<(), Box<dyn Error>> {
 	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
 	let mut old_chamber = echo.chamber()?;
 	echo.write(|write| {
-		write.target(Target::Number(3))
+		write.arrow(Arrow::Number(3))
 	})?;
 	let mut new_chamber = echo.chamber()?;
-	assert_eq!(new_chamber.target_or_none(), Some(Target::Number(3)));
-	assert_eq!(old_chamber.target_or_none(), None);
+	assert_eq!(new_chamber.arrow_or_none(), Some(Arrow::Number(3)));
+	assert_eq!(old_chamber.arrow_or_none(), None);
 	Ok(())
 }

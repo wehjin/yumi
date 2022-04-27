@@ -96,32 +96,32 @@ impl InnerEcho {
 	}
 
 	fn write_point_objects(&mut self, say: &Say, diary_reader: &mut diary::Reader) -> io::Result<()> {
-		let object_targets_root = match self.point_objects.reader()?.read_value(&say.point, diary_reader)? {
+		let object_arrows_root = match self.point_objects.reader()?.read_value(&say.point, diary_reader)? {
 			None => Root::ZERO,
 			Some(root) => root
 		};
-		let mut object_targets = Hamt::new(object_targets_root);
-		let target = match &say.target {
+		let mut object_arrows = Hamt::new(object_arrows_root);
+		let arrow = match &say.arrow {
 			None => unimplemented!(),
 			Some(it) => it.clone(),
 		};
-		let object_target = ProdAB { a: say.object.to_owned(), b: target };
-		object_targets.write_value(&say.object, &object_target, &mut self.diary_writer)?;
-		self.point_objects.write_value(&say.point, &object_targets.root, &mut self.diary_writer)
+		let object_arrow = ProdAB { a: say.object.to_owned(), b: arrow };
+		object_arrows.write_value(&say.object, &object_arrow, &mut self.diary_writer)?;
+		self.point_objects.write_value(&say.point, &object_arrows.root, &mut self.diary_writer)
 	}
 
 	fn write_object_points(&mut self, say: &Say, diary_reader: &mut diary::Reader) -> io::Result<()> {
-		let point_targets_root = match self.object_points.reader()?.read_value(&say.object, diary_reader)? {
+		let point_arrows_root = match self.object_points.reader()?.read_value(&say.object, diary_reader)? {
 			None => Root::ZERO,
 			Some(it) => it,
 		};
-		let mut point_targets = Hamt::new(point_targets_root);
-		let target = match &say.target {
+		let mut point_arrows = Hamt::new(point_arrows_root);
+		let arrow = match &say.arrow {
 			None => unimplemented!(),
 			Some(it) => it.clone(),
 		};
-		point_targets.write_value(&say.point, &target, &mut self.diary_writer)?;
-		self.object_points.write_value(&say.object, &point_targets.root, &mut self.diary_writer)
+		point_arrows.write_value(&say.point, &arrow, &mut self.diary_writer)?;
+		self.object_points.write_value(&say.object, &point_arrows.root, &mut self.diary_writer)
 	}
 
 	fn chamber(&self) -> io::Result<Chamber> {

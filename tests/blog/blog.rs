@@ -1,6 +1,6 @@
 use std::io;
 
-use echodb::{Chamber, Echo, ObjectId, Point, Target};
+use echodb::{Chamber, Echo, ObjectId, Point, Arrow};
 
 pub const BLOG_TITLE: &Point = &Point::Static { aspect: "Blog", name: "title" };
 pub const BLOG_OWNER: &Point = &Point::Static { aspect: "Blog", name: "owner" };
@@ -12,8 +12,8 @@ pub fn create_if_none(blogger_id: &ObjectId, echo: &Echo) -> io::Result<ObjectId
 		None => echo.write(|write| {
 			let blog_id = write.new_object_id("blog");
 			write.write_object_properties(&blog_id, vec![
-				(BLOG_OWNER, Target::Object(blogger_id.to_owned())),
-				(BLOG_TITLE, Target::String("Musings".to_string()))
+				(BLOG_OWNER, Arrow::Object(blogger_id.to_owned())),
+				(BLOG_TITLE, Arrow::String("Musings".to_string()))
 			]);
 			blog_id
 		})?,
@@ -22,6 +22,6 @@ pub fn create_if_none(blogger_id: &ObjectId, echo: &Echo) -> io::Result<ObjectId
 }
 
 pub fn read(blogger_id: &ObjectId, chamber: &Chamber) -> io::Result<Option<ObjectId>> {
-	let blogs = chamber.objects_with_property(BLOG_OWNER, &Target::Object(blogger_id.clone()))?;
+	let blogs = chamber.objects_with_property(BLOG_OWNER, &Arrow::Object(blogger_id.clone()))?;
 	Ok(blogs.first().cloned())
 }

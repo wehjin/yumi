@@ -45,6 +45,6 @@ pub struct SayPos {
 	pub sayer: Pos,
 	pub object: Pos,
 	pub point: Pos,
-	pub target: Pos,
+	pub arrow: Pos,
 	pub end: Pos,
 }

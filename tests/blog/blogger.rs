@@ -1,6 +1,6 @@
 use std::io;
 
-use echodb::{Chamber, Echo, ObjectId, Point, Target};
+use echodb::{Chamber, Echo, ObjectId, Point, Arrow};
 
 pub const NAME: &Point = &Point::Static { aspect: "Blogger", name: "name" };
 
@@ -12,7 +12,7 @@ pub fn create_if_none(echo: &Echo) -> io::Result<ObjectId> {
 		None => echo.write(|write| {
 			let blogger_id = write.new_object_id("blogger");
 			write.write_object_properties(&blogger_id, vec![
-				(NAME, Target::String("Alice".to_string()))
+				(NAME, Arrow::String("Alice".to_string()))
 			]);
 			blogger_id
 		})?,

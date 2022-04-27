@@ -10,7 +10,7 @@ use std::io;
 use std::io::ErrorKind;
 use std::path::Path;
 
-use crate::{Chamber, Echo, ObjectId, Point, Target};
+use crate::{Chamber, Echo, ObjectId, Point, Arrow};
 
 /// Read values at keys.
 pub struct Catalog {
@@ -39,10 +39,10 @@ impl Catalog {
 	pub fn read<K: Key, V: Value, F: Fn() -> V>(&self, key: &K, fallback: F) -> Result<V, Box<dyn Error>> {
 		//! Read the value at key.
 		let object_id = key_object_id(key);
-		let target = self.chamber.target_at_object_point_or_none(&object_id, &VALUE_POINT);
-		match target {
+		let arrow = self.chamber.arrow_at_object_point_or_none(&object_id, &VALUE_POINT);
+		match arrow {
 			None => Ok(fallback()),
-			Some(ref target) => if let Target::String(ref s) = target {
+			Some(ref arrow) => if let Arrow::String(ref s) = arrow {
 				let value = V::from_value_string(s)?;
 				Ok(value)
 			} else {
@@ -58,7 +58,7 @@ impl Store {
 		self.echo.write(|echo_writer| {
 			let object_id = key_object_id(key);
 			echo_writer.write_object_properties(&object_id, vec![
-				(&VALUE_POINT, Target::String(value.to_value_string()))
+				(&VALUE_POINT, Arrow::String(value.to_value_string()))
 			]);
 		})?;
 		Ok(())

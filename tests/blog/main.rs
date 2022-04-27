@@ -29,7 +29,7 @@ fn mutate(echo_name: &String) -> Result<(), Box<dyn Error>> {
 	let blog_id = blog::create_if_none(&blogger_id, &echo)?;
 	post::create("Elephant ears", "Elephant ears are big.", &blog_id, &echo)?;
 	let post_id = post::create("Kitten ears", "Kitten ears are cute.", &blog_id, &echo)?;
-	assert!(echo.chamber()?.target_at_object_point_or_none(&post_id, post::BLOG_ID).is_some());
+	assert!(echo.chamber()?.arrow_at_object_point_or_none(&post_id, post::BLOG_ID).is_some());
 	Ok(())
 }
 
