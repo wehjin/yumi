@@ -172,7 +172,7 @@ impl RootsLog {
 				(Root::ZERO, Root::ZERO)
 			} else {
 				let mut reader = OpenOptions::new().read(true).open(&file_path)?;
-				reader.seek(SeekFrom::End(-2 * hamt::root::ROOT_LEN as i64))?;
+				reader.seek(SeekFrom::End(-2 * hamt::ROOT_LEN as i64))?;
 				let a_root = Root::read_bytes(&mut reader)?;
 				let b_root = Root::read_bytes(&mut reader)?;
 				(a_root, b_root)

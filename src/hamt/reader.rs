@@ -27,7 +27,7 @@ mod tests {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub(crate) struct Reader {
+pub struct Reader {
 	pub root: Root,
 }
 

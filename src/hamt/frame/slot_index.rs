@@ -1,8 +1,8 @@
 use std::ops::Range;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub(crate) struct SlotIndex {
-	pub n: usize
+pub struct SlotIndex {
+	pub n: usize,
 }
 
 impl SlotIndex {

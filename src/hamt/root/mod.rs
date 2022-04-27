@@ -10,7 +10,7 @@ pub(crate) use self::prod_ab::*;
 mod prod_ab;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub(crate) struct Root {
+pub struct Root {
 	pub pos: u32,
 	pub mask: u32,
 }

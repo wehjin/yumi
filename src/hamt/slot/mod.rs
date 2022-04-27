@@ -10,7 +10,7 @@ pub(crate) use self::read_write::{Reader, SLOT_LEN, Writer};
 pub mod read_write;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub(crate) enum Slot {
+pub enum Slot {
 	Empty,
 	KeyValue(u32, u32),
 	Root(Root),

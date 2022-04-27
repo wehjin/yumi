@@ -27,7 +27,7 @@ mod tests {
 	}
 }
 
-pub(crate) trait SlotIndexer {
+pub trait SlotIndexer {
 	fn key(&self) -> u32;
 	fn slot_index(&mut self, depth: usize) -> u8;
 	fn with_key(&self, key: u32) -> Box<dyn SlotIndexer>;
