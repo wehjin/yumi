@@ -18,6 +18,7 @@ pub trait Writable {
 	fn to_flights(&self) -> Vec<Flight>;
 }
 
+/// `Archer`, `Target`, `Ring`, and `Arrow` in one structure.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Flight {
 	pub archer: Archer,
@@ -26,6 +27,7 @@ pub struct Flight {
 	pub arrow: Option<Arrow>,
 }
 
+/// An `Archer` is a writer of the database.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Archer {
 	Unit,

@@ -4,6 +4,7 @@ use std::io;
 use crate::bytes::{ReadBytes, WriteBytes};
 use crate::hamt::Key;
 
+/// A `Ring` is a sub-location on a `Target`.
 #[derive(Debug, Clone, Eq, Hash)]
 pub enum Ring {
 	Unit,

@@ -20,6 +20,7 @@ mod tests {
 	}
 }
 
+/// A `Clout` allows a user see what `Arrow`s are in a `Target` within a `Ring`.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Clout {
 	pub target: Target,

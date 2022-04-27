@@ -4,6 +4,7 @@ use std::io;
 use crate::bytes::{ReadBytes, WriteBytes};
 use crate::Target;
 
+/// An `Arrow` is  a piece of data stored in the database.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Arrow {
 	Number(u64),
