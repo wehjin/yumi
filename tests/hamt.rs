@@ -1,10 +1,11 @@
-extern crate echo_lib;
-
 use std::error::Error;
 use std::hash::{Hash, Hasher};
 
 use echo_lib::diary::Diary;
 use echo_lib::hamt::{Hamt, Key, Root};
+
+#[cfg(test)]
+mod diary;
 
 #[test]
 fn write_read() -> Result<(), Box<dyn Error>> {
