@@ -13,8 +13,8 @@ mod subcommand;
 mod settings;
 
 fn cli() -> Command<'static> {
-	Command::new("canyon")
-		.about("Manage an echo database")
+	Command::new("yumi")
+		.about("Manage a recurve-db database")
 		.subcommand_required(true)
 		.arg_required_else_help(true)
 		.subcommand(init::cli())

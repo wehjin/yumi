@@ -1,20 +1,20 @@
 //! Basic Usage:
 //!
 //! ```
-//! use echodb::Echo;
-//! let echo = Echo::connect("my-app", &std::env::temp_dir());
+//! use recurvedb::Recurve;
+//! let recurve = Recurve::connect("my-app", &std::env::temp_dir());
 //! ```
 extern crate rand;
 
 pub use self::chamber::*;
 pub use self::core::*;
-pub use self::echo::*;
+pub use self::recurve::*;
 pub use self::clout::*;
 
 mod chamber;
 mod core;
 mod clout;
-mod echo;
+mod recurve;
 pub mod util;
 pub mod hamt;
 pub mod diary;

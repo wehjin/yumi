@@ -14,8 +14,9 @@ use crate::util::io_error;
 
 mod write_scope;
 
+/// A `Recurve ` is the entry point for writing to and reading from the database.
 #[derive(Debug, Clone)]
-pub struct Echo {
+pub struct Recurve {
 	tx: SyncSender<Action>,
 }
 
@@ -24,8 +25,8 @@ enum Action {
 	Latest(Sender<Chamber>),
 }
 
-impl Echo {
-	/// Connects to an Echo.
+impl Recurve {
+	/// Connects to a Recurve instance.
 	pub fn connect(name: &str, folder: impl AsRef<Path>) -> Self {
 		let folder = folder.as_ref();
 		let mut folder_path = folder.to_path_buf();
@@ -33,21 +34,21 @@ impl Echo {
 		std::fs::create_dir_all(&folder_path).unwrap();
 		let (tx, rx) = sync_channel::<Action>(64);
 		thread::spawn(move || {
-			let mut echo = InnerEcho::new(folder_path);
+			let mut recurve = InnerRecurve::new(folder_path);
 			for action in rx {
 				match action {
 					Action::Speech(speech, tx) => {
-						let new_chamber = echo.write_speech(speech);
+						let new_chamber = recurve.write_speech(speech);
 						tx.send(new_chamber).unwrap();
 					}
 					Action::Latest(tx) => {
-						let chamber = echo.chamber().unwrap();
+						let chamber = recurve.chamber().unwrap();
 						tx.send(chamber).unwrap();
 					}
 				}
 			}
 		});
-		Echo { tx }
+		Recurve { tx }
 	}
 
 	/// Opens a scope for writing facts to the database and provides it to the
@@ -75,7 +76,7 @@ impl Echo {
 	}
 }
 
-struct InnerEcho {
+struct InnerRecurve {
 	diary: Diary,
 	diary_writer: diary::Writer,
 	target_rings: Hamt,
@@ -83,7 +84,7 @@ struct InnerEcho {
 	roots_log: RootsLog,
 }
 
-impl InnerEcho {
+impl InnerRecurve {
 	fn write_speech(&mut self, speech: Speech) -> io::Result<Chamber> {
 		for flight in speech.flights.into_iter() {
 			let mut diary_reader = self.diary_writer.reader()?;
@@ -140,7 +141,7 @@ impl InnerEcho {
 		let (target_rings_root, ring_targets_root) = roots_log.roots;
 		let target_rings = Hamt::new(target_rings_root);
 		let ring_targets = Hamt::new(ring_targets_root);
-		InnerEcho { diary, diary_writer, target_rings, ring_targets, roots_log }
+		InnerRecurve { diary, diary_writer, target_rings, ring_targets, roots_log }
 	}
 }
 

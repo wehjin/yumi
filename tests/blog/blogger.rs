@@ -1,15 +1,15 @@
 use std::io;
 
-use echodb::{Chamber, Echo, Target, Ring, Arrow};
+use recurvedb::{Chamber, Recurve, Target, Ring, Arrow};
 
 pub const NAME: &Ring = &Ring::Static { aspect: "Blogger", name: "name" };
 
 
-pub fn create_if_none(echo: &Echo) -> io::Result<Target> {
-	let old_blogger = read(&echo.chamber()?)?;
+pub fn create_if_none(recurve: &Recurve) -> io::Result<Target> {
+	let old_blogger = read(&recurve.chamber()?)?;
 	let blogger = match old_blogger {
 		Some(target) => target.clone(),
-		None => echo.write(|write| {
+		None => recurve.write(|write| {
 			let blogger = write.new_target("blogger");
 			write.write_target_properties(&blogger, vec![
 				(NAME, Arrow::String("Alice".to_string()))

@@ -1,6 +1,6 @@
 use std::io;
 
-use echodb::{Arrow, Chamber, Echo, Ring, Target};
+use recurvedb::{Arrow, Chamber, Recurve, Ring, Target};
 
 pub const TITLE: &Ring = &Ring::Static { aspect: "BlogPost", name: "title" };
 pub const BODY: &Ring = &Ring::Static { aspect: "BlogPost", name: "body" };
@@ -12,8 +12,8 @@ pub fn read_ordered(blog: &Target, chamber: &Chamber) -> io::Result<Vec<Target>>
 	Ok(posts)
 }
 
-pub fn create(title: &str, body: &str, blog: &Target, echo: &Echo) -> io::Result<Target> {
-	echo.write(|write| {
+pub fn create(title: &str, body: &str, blog: &Target, recurve: &Recurve) -> io::Result<Target> {
+	recurve.write(|write| {
 		let post = write.new_target("blog-post");
 		write.write_target_properties(&post, vec![
 			(TITLE, Arrow::String(title.to_string())),

@@ -2,7 +2,7 @@ use std::error::Error;
 
 use clap::{Arg, ArgMatches, Command};
 
-use crate::kv::{CanyonKey, CanyonString};
+use crate::kv::{YumiKey, YumiString};
 
 pub fn cli() -> Command<'static> {
 	Command::new("write")
@@ -13,8 +13,8 @@ pub fn cli() -> Command<'static> {
 }
 
 pub fn main(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
-	let key = CanyonKey(args.value_of("KEY").expect("key").to_string());
-	let value = CanyonString(args.value_of("VALUE").expect("value").to_string());
+	let key = YumiKey(args.value_of("KEY").expect("key").to_string());
+	let value = YumiString(args.value_of("VALUE").expect("value").to_string());
 	let kvs = super::open_kvs()?;
 	kvs.write(&key, &value)?;
 	Ok(())

@@ -1,9 +1,9 @@
 use std::error::Error;
 
 use clap::{Arg, ArgMatches, Command};
-use echodb::kvs::Value;
+use recurvedb::kvs::Value;
 
-use crate::kv::{CanyonKey, CanyonString};
+use crate::kv::{YumiKey, YumiString};
 
 pub fn cli() -> Command<'static> {
 	Command::new("read")
@@ -13,10 +13,10 @@ pub fn cli() -> Command<'static> {
 }
 
 pub fn main(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
-	let key = CanyonKey(args.value_of("KEY").expect("key").to_string());
+	let key = YumiKey(args.value_of("KEY").expect("key").to_string());
 	let kvs = super::open_kvs()?;
 	let catalog = kvs.catalog()?;
-	let value = catalog.read(&key, || CanyonString("fail".into()))?;
+	let value = catalog.read(&key, || YumiString("fail".into()))?;
 	println!("{}", value.to_value_string());
 	Ok(())
 }

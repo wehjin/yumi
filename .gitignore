@@ -1,5 +1,5 @@
 /.idea
 /target
 Cargo.lock
-Canyon.toml
-/canyon
+Yumi.toml
+/yumi

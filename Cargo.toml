@@ -1,5 +1,5 @@
 [package]
-name = "echo-lib"
+name = "recurvedb"
 version = "0.1.0"
 authors = ["Jeffrey Yu <92849+wehjin@users.noreply.github.com>"]
 edition = "2018"
@@ -7,12 +7,12 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "echodb"
+name = "recurvedb"
 path = "src/lib.rs"
 
 [[bin]]
-name = "canyon"
-path = "src/bin/canyon/main.rs"
+name = "yumi"
+path = "src/bin/yumi/main.rs"
 
 [dependencies]
 rand = "0.8.5"

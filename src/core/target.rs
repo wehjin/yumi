@@ -4,7 +4,7 @@ use std::io;
 use crate::bytes::{ReadBytes, WriteBytes};
 use crate::hamt::Key;
 
-/// A `Target` is place in the database where data (`Arrow`s) can be attached. @Arrow
+/// A `Target` is location in the database where an `Arrow` can be attached.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub enum Target {
 	Unit,

@@ -3,7 +3,7 @@ use std::path::Path;
 
 use clap::{ArgMatches, Command};
 
-use echodb::kvs;
+use recurvedb::kvs;
 
 mod write;
 mod read;
@@ -26,25 +26,25 @@ pub fn main(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
 }
 
 fn open_kvs() -> Result<kvs::Store, Box<dyn Error>> {
-	let kvs = echodb::kvs::open("canyon", Path::new("."))?;
+	let kvs = recurvedb::kvs::open("yumi", Path::new("."))?;
 	Ok(kvs)
 }
 
 
 #[derive(Debug, Clone, PartialEq, Hash)]
-pub struct CanyonKey(String);
+pub struct YumiKey(String);
 
-impl kvs::Key for CanyonKey {}
+impl kvs::Key for YumiKey {}
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct CanyonString(String);
+pub struct YumiString(String);
 
-impl kvs::Value for CanyonString {
+impl kvs::Value for YumiString {
 	fn to_value_string(&self) -> String {
 		self.0.to_string()
 	}
 
 	fn from_value_string(s: &String) -> Result<Self, Box<dyn Error>> {
-		Ok(CanyonString(s.to_string()))
+		Ok(YumiString(s.to_string()))
 	}
 }

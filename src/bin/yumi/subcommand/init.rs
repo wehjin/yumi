@@ -19,7 +19,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 		ingress: IngressSettings { user_codes: vec![random()] }
 	};
 	let settings = toml::to_string_pretty(&settings).expect("toml for Settings");
-	let path = "Canyon.toml";
+	let path = "Yumi.toml";
 	let mut file = OpenOptions::new()
 		.write(true)
 		.create_new(true)

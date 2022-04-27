@@ -1,6 +1,6 @@
 //! Open a key-value store, assign values to keys.
 //! ```
-//! use echodb::kvs;
+//! use recurvedb::kvs;
 //! let store = kvs::open("my-store", &std::env::temp_dir());
 //! ```
 use std::collections::hash_map::DefaultHasher;
@@ -10,7 +10,7 @@ use std::io;
 use std::io::ErrorKind;
 use std::path::Path;
 
-use crate::{Chamber, Echo, Target, Ring, Arrow};
+use crate::{Chamber, Recurve, Target, Ring, Arrow};
 
 /// Read values at keys.
 pub struct Catalog {
@@ -19,7 +19,7 @@ pub struct Catalog {
 
 /// Write values to keys and acquire catalogs.
 pub struct Store {
-	echo: Echo
+	recurve: Recurve
 }
 
 pub trait Key: Hash {}
@@ -31,8 +31,8 @@ pub trait Value: Sized {
 
 pub fn open(name: &str, folder: &Path) -> Result<Store, Box<dyn Error>> {
 	//! Open a key-value store with the given name in the specified folder.
-	let echo = Echo::connect(name, folder);
-	Ok(Store { echo })
+	let recurve = Recurve::connect(name, folder);
+	Ok(Store { recurve })
 }
 
 impl Catalog {
@@ -55,9 +55,9 @@ impl Catalog {
 impl Store {
 	pub fn write(&self, key: &impl Key, value: &impl Value) -> Result<(), Box<dyn Error>> {
 		//! Assign a value to a key.
-		self.echo.write(|echo_writer| {
+		self.recurve.write(|recurve_writer| {
 			let target = key_target(key);
-			echo_writer.write_target_properties(&target, vec![
+			recurve_writer.write_target_properties(&target, vec![
 				(&VALUE_RING, Arrow::String(value.to_value_string()))
 			]);
 		})?;
@@ -65,12 +65,12 @@ impl Store {
 	}
 	pub fn catalog(&self) -> Result<Catalog, Box<dyn Error>> {
 		//! Acquire a reader for the current state of the store.
-		let chamber = self.echo.chamber()?;
+		let chamber = self.recurve.chamber()?;
 		Ok(Catalog { chamber })
 	}
 }
 
-const VALUE_RING: Ring = Ring::Static { aspect: "echo::kv", name: "value" };
+const VALUE_RING: Ring = Ring::Static { aspect: "recurve::kv", name: "value" };
 
 fn key_target<K: Key>(key: &K) -> Target {
 	let key_hash = (key_hash(key) as i64).abs();

@@ -3,8 +3,8 @@ extern crate uuid;
 use std::error::Error;
 use std::io::ErrorKind;
 
-use echodb::kvs;
-use echodb::util::temp_dir;
+use recurvedb::kvs;
+use recurvedb::util::temp_dir;
 
 #[test]
 fn it_works() -> Result<(), Box<dyn Error>> {

@@ -1,5 +1,5 @@
-use echodb::{Target, Ring, Flight, Archer, Arrow};
-use echodb::diary::{Diary, FlightPos};
+use recurvedb::{Target, Ring, Flight, Archer, Arrow};
+use recurvedb::diary::{Diary, FlightPos};
 
 #[test]
 fn main() {

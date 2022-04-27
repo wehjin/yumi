@@ -2,8 +2,8 @@ use std::{io, thread};
 use std::error::Error;
 use std::sync::mpsc::channel;
 
-use echodb::{Arrow, Clout, CloutFilter, Echo, Ring, Flight, Target, Writable};
-use echodb::util::unique_name;
+use recurvedb::{Arrow, Clout, CloutFilter, Flight, Recurve, Ring, Target, Writable};
+use recurvedb::util::unique_name;
 
 const COUNT: Ring = Ring::Static { name: "count", aspect: "Counter" };
 const MAX_COUNT: Ring = Ring::Static { name: "max_count", aspect: "Counter" };
@@ -47,9 +47,9 @@ impl<'a> CloutFilter<'a> for Counter {
 fn filter() {
 	let counter = Counter::new("card-counter", 7, 56);
 	let mut chamber = {
-		let echo = Echo::connect(&unique_name("x-holder"), &std::env::temp_dir());
-		echo.write(|txn| txn.writable(&counter)).unwrap();
-		echo.chamber().unwrap()
+		let recurve = Recurve::connect(&unique_name("x-holder"), &std::env::temp_dir());
+		recurve.write(|txn| txn.writable(&counter)).unwrap();
+		recurve.chamber().unwrap()
 	};
 	let counters = chamber.clouts::<Counter>().unwrap();
 	assert_eq!(1, counters.len());
@@ -60,31 +60,31 @@ fn filter() {
 
 #[test]
 fn multi_thread() -> Result<(), Box<dyn Error>> {
-	let echo = Echo::connect(&unique_name("test-multi-thread"), &std::env::temp_dir());
+	let recurve = Recurve::connect(&unique_name("test-multi-thread"), &std::env::temp_dir());
 	let job1 = {
-		let echo = echo.clone();
+		let recurve = recurve.clone();
 		thread::spawn(move || {
-			echo.write(|write| {
+			recurve.write(|write| {
 				write.attributes(vec![(&COUNT, Arrow::Number(1))])
 			})
 		})
 	};
 	let job2 = {
-		let (tx, rx) = channel::<Echo>();
+		let (tx, rx) = channel::<Recurve>();
 		let job = thread::spawn(move || {
-			for echo in rx {
-				echo.write(|write| {
+			for recurve in rx {
+				recurve.write(|write| {
 					write.attributes(vec![(&MAX_COUNT, Arrow::Number(100))])
 				}).unwrap();
 			}
 			Ok(()) as io::Result<()>
 		});
-		tx.send(echo.clone()).unwrap();
+		tx.send(recurve.clone()).unwrap();
 		job
 	};
 	job1.join().unwrap()?;
 	job2.join().unwrap()?;
-	let chamber = echo.chamber()?;
+	let chamber = recurve.chamber()?;
 	let attributes = chamber.properties(vec![&COUNT, &MAX_COUNT]);
 	assert_eq!(attributes.len(), 2);
 	Ok(())
@@ -93,21 +93,21 @@ fn multi_thread() -> Result<(), Box<dyn Error>> {
 #[test]
 fn double_reconnect() -> Result<(), Box<dyn Error>> {
 	let path = {
-		let path = unique_name("echo-test-");
-		let echo = Echo::connect(&path, &std::env::temp_dir());
-		echo.write(|write| {
+		let path = unique_name("recurve-test-");
+		let recurve = Recurve::connect(&path, &std::env::temp_dir());
+		recurve.write(|write| {
 			write.arrow(Arrow::Number(3));
 		})?;
 		path
 	};
 	{
-		let echo = Echo::connect(&path, &std::env::temp_dir());
-		echo.write(|write| {
+		let recurve = Recurve::connect(&path, &std::env::temp_dir());
+		recurve.write(|write| {
 			write.arrow(Arrow::Number(10));
 		})?;
 	}
-	let echo = Echo::connect(&path, &std::env::temp_dir());
-	let mut chamber = echo.chamber()?;
+	let recurve = Recurve::connect(&path, &std::env::temp_dir());
+	let mut chamber = recurve.chamber()?;
 	assert_eq!(chamber.arrow_or_none(), Some(Arrow::Number(10)));
 	Ok(())
 }
@@ -115,16 +115,16 @@ fn double_reconnect() -> Result<(), Box<dyn Error>> {
 #[test]
 fn reconnect() -> Result<(), Box<dyn Error>> {
 	let path = {
-		let path = unique_name("echo-test-");
-		let echo = Echo::connect(&path, &std::env::temp_dir());
-		echo.write(|write| {
+		let path = unique_name("recurve-test-");
+		let recurve = Recurve::connect(&path, &std::env::temp_dir());
+		recurve.write(|write| {
 			write.arrow(Arrow::Number(3));
 			write.arrow(Arrow::Number(10));
 		})?;
 		path
 	};
-	let echo = Echo::connect(&path, &std::env::temp_dir());
-	let mut chamber = echo.chamber()?;
+	let recurve = Recurve::connect(&path, &std::env::temp_dir());
+	let mut chamber = recurve.chamber()?;
 	assert_eq!(chamber.arrow_or_none(), Some(Arrow::Number(10)));
 	Ok(())
 }
@@ -133,12 +133,12 @@ fn reconnect() -> Result<(), Box<dyn Error>> {
 fn targets_with_ring() -> Result<(), Box<dyn Error>> {
 	let dracula = Target::new("Dracula");
 	let bo_peep = Target::new("Bo Peep");
-	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
-	echo.write(|shout| {
+	let recurve = Recurve::connect(&unique_name("recurve-test-"), &std::env::temp_dir());
+	recurve.write(|shout| {
 		shout.write_target_properties(&dracula, vec![(&COUNT, Arrow::Number(3))]);
 		shout.write_target_properties(&bo_peep, vec![(&COUNT, Arrow::Number(7))]);
 	})?;
-	let mut targets = echo.chamber()?.targets_with_ring(&COUNT)?;
+	let mut targets = recurve.chamber()?.targets_with_ring(&COUNT)?;
 	targets.sort();
 	assert_eq!(targets, vec![bo_peep, dracula]);
 	Ok(())
@@ -147,25 +147,25 @@ fn targets_with_ring() -> Result<(), Box<dyn Error>> {
 #[test]
 fn target_attributes() -> Result<(), Box<dyn Error>> {
 	let dracula = Target::String("Dracula".into());
-	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
-	echo.write(|shout| {
+	let recurve = Recurve::connect(&unique_name("recurve-test-"), &std::env::temp_dir());
+	recurve.write(|shout| {
 		shout.write_target_properties(&dracula, vec![(&COUNT, Arrow::Number(3))]);
 	})?;
-	let attributes = echo.chamber()?.arrows_at_target_rings(&dracula, vec![&COUNT]);
+	let attributes = recurve.chamber()?.arrows_at_target_rings(&dracula, vec![&COUNT]);
 	assert_eq!(attributes.get(&COUNT), Some(&Arrow::Number(3)));
 	Ok(())
 }
 
 #[test]
 fn attributes() -> Result<(), Box<dyn Error>> {
-	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
-	echo.write(|shout| {
+	let recurve = Recurve::connect(&unique_name("recurve-test-"), &std::env::temp_dir());
+	recurve.write(|shout| {
 		shout.attributes(vec![
 			(&MAX_COUNT, Arrow::Number(100)),
 			(&COUNT, Arrow::Number(0)),
 		]);
 	})?;
-	let attributes = echo.chamber()?.properties(vec![&MAX_COUNT, &COUNT]);
+	let attributes = recurve.chamber()?.properties(vec![&MAX_COUNT, &COUNT]);
 	assert_eq!(attributes, vec![
 		(&MAX_COUNT, Some(Arrow::Number(100))),
 		(&COUNT, Some(Arrow::Number(0))),
@@ -175,12 +175,12 @@ fn attributes() -> Result<(), Box<dyn Error>> {
 
 #[test]
 fn arrow() -> Result<(), Box<dyn Error>> {
-	let echo = Echo::connect(&unique_name("echo-test-"), &std::env::temp_dir());
-	let mut old_chamber = echo.chamber()?;
-	echo.write(|write| {
+	let recurve = Recurve::connect(&unique_name("recurve-test-"), &std::env::temp_dir());
+	let mut old_chamber = recurve.chamber()?;
+	recurve.write(|write| {
 		write.arrow(Arrow::Number(3))
 	})?;
-	let mut new_chamber = echo.chamber()?;
+	let mut new_chamber = recurve.chamber()?;
 	assert_eq!(new_chamber.arrow_or_none(), Some(Arrow::Number(3)));
 	assert_eq!(old_chamber.arrow_or_none(), None);
 	Ok(())
