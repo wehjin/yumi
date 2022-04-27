@@ -19,4 +19,4 @@ pub mod util;
 pub mod hamt;
 pub mod diary;
 pub mod bytes;
-pub mod kv;
+pub mod kvs;

@@ -1,11 +1,10 @@
-extern crate echo_lib;
 extern crate uuid;
 
 use std::error::Error;
 use std::io::ErrorKind;
 
-use echo_lib::kv;
-use echo_lib::util::temp_dir;
+use echodb::kvs;
+use echodb::util::temp_dir;
 
 #[test]
 fn it_works() -> Result<(), Box<dyn Error>> {
@@ -17,10 +16,10 @@ fn it_works() -> Result<(), Box<dyn Error>> {
 	let kvs_name = "difficulties";
 	let kvs_folder = temp_dir("kv-test")?;
 	{
-		let kvs = kv::open(kvs_name, &kvs_folder)?;
+		let kvs = kvs::open(kvs_name, &kvs_folder)?;
 		kvs.write(&equation, &difficulty)?;
 	}
-	let kvs = kv::open(kvs_name, &kvs_folder)?;
+	let kvs = kvs::open(kvs_name, &kvs_folder)?;
 	let catalog = kvs.catalog()?;
 	let stored_difficulty = catalog.read(&equation, || Difficulty::Hard)?;
 	assert_eq!(difficulty, stored_difficulty);
@@ -39,9 +38,9 @@ enum Difficulty {
 	Easy,
 }
 
-impl kv::Key for Equation {}
+impl kvs::Key for Equation {}
 
-impl kv::Value for Difficulty {
+impl kvs::Value for Difficulty {
 	fn to_value_string(&self) -> String {
 		match self {
 			Difficulty::Hard => "hard".to_string(),

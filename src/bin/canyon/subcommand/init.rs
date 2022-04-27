@@ -6,9 +6,8 @@ use std::io::{ErrorKind, Write};
 use clap::Command;
 use rand::random;
 
-use crate::init::settings::{IngressSettings, Settings};
+use crate::settings::{IngressSettings, Settings};
 
-mod settings;
 
 pub fn cli() -> Command<'static> {
 	Command::new("init")

@@ -26,7 +26,8 @@ enum Action {
 
 impl Echo {
 	/// Connects to an Echo.
-	pub fn connect(name: &str, folder: &Path) -> Self {
+	pub fn connect(name: &str, folder: impl AsRef<Path>) -> Self {
+		let folder = folder.as_ref();
 		let mut folder_path = folder.to_path_buf();
 		folder_path.push(name);
 		std::fs::create_dir_all(&folder_path).unwrap();
