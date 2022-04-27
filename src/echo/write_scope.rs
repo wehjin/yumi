@@ -1,6 +1,7 @@
 use crate::{ObjectId, Point, Say, Sayer, Target, Writable};
 use crate::util::unique_name;
 
+/// WriteScope allows a function to write facts into the database.
 pub struct WriteScope {
 	pub says: Vec<Say>
 }

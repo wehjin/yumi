@@ -1,5 +1,5 @@
-use echo_lib::{ObjectId, Point, Say, Sayer, Target};
-use echo_lib::diary::{Diary, SayPos};
+use echodb::{ObjectId, Point, Say, Sayer, Target};
+use echodb::diary::{Diary, SayPos};
 
 #[test]
 fn main() {

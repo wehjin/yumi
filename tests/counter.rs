@@ -2,8 +2,8 @@ use std::{io, thread};
 use std::error::Error;
 use std::sync::mpsc::channel;
 
-use echo_lib::{Echo, Object, ObjectFilter, ObjectId, Point, Say, Target, Writable};
-use echo_lib::util::unique_name;
+use echodb::{Echo, Object, ObjectFilter, ObjectId, Point, Say, Target, Writable};
+use echodb::util::unique_name;
 
 const COUNT: Point = Point::Static { name: "count", aspect: "Counter" };
 const MAX_COUNT: Point = Point::Static { name: "max_count", aspect: "Counter" };

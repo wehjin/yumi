@@ -1,7 +1,7 @@
 //! Open a key-value store, assign values to keys.
 //! ```
-//! use echo_lib::kv;
-//! let store = kv::open("my-store", &std::env::temp_dir());
+//! use echodb::kvs;
+//! let store = kvs::open("my-store", &std::env::temp_dir());
 //! ```
 use std::collections::hash_map::DefaultHasher;
 use std::error::Error;

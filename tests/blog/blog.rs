@@ -1,6 +1,6 @@
 use std::io;
 
-use echo_lib::{Chamber, Echo, ObjectId, Point, Target};
+use echodb::{Chamber, Echo, ObjectId, Point, Target};
 
 pub const BLOG_TITLE: &Point = &Point::Static { aspect: "Blog", name: "title" };
 pub const BLOG_OWNER: &Point = &Point::Static { aspect: "Blog", name: "owner" };

@@ -1,20 +1,20 @@
 //! Basic Usage:
 //!
 //! ```
-//! use echo_lib::Echo;
+//! use echodb::Echo;
 //! let echo = Echo::connect("my-app", &std::env::temp_dir());
 //! ```
 extern crate rand;
 
 pub use self::chamber::*;
 pub use self::core::*;
-pub use self::echo::Echo;
+pub use self::echo::*;
 pub use self::object::*;
 
 mod chamber;
 mod core;
-mod echo;
 mod object;
+mod echo;
 pub mod util;
 pub mod hamt;
 pub mod diary;

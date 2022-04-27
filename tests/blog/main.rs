@@ -1,8 +1,8 @@
 use std::env::temp_dir;
 use std::error::Error;
 
-use echo_lib::Echo;
-use echo_lib::util::unique_name;
+use echodb::Echo;
+use echodb::util::unique_name;
 
 #[test]
 fn it_works() -> Result<(), Box<dyn Error>> {
