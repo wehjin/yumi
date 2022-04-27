@@ -39,3 +39,12 @@ impl Add<Pos> for Pos {
 		Pos { start: self.start + rhs.start }
 	}
 }
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct SayPos {
+	pub sayer: Pos,
+	pub object: Pos,
+	pub point: Pos,
+	pub target: Pos,
+	pub end: Pos,
+}

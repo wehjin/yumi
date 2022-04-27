@@ -8,12 +8,3 @@ mod reader;
 mod diary;
 mod pos;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct SayPos {
-	pub sayer: Pos,
-	pub object: Pos,
-	pub point: Pos,
-	pub target: Pos,
-	pub end: Pos,
-}
-
