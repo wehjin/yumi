@@ -10,16 +10,16 @@ use std::io;
 use std::io::ErrorKind;
 use std::path::Path;
 
-use crate::{Chamber, Recurve, Target, Ring, Arrow};
+use crate::{Arrow, Chamber, Recurve, Ring, Target};
 
 /// Read values at keys.
 pub struct Catalog {
-	chamber: Chamber
+	chamber: Chamber,
 }
 
 /// Write values to keys and acquire catalogs.
 pub struct Store {
-	recurve: Recurve
+	recurve: Recurve,
 }
 
 pub trait Key: Hash {}
@@ -55,9 +55,9 @@ impl Catalog {
 impl Store {
 	pub fn write(&self, key: &impl Key, value: &impl Value) -> Result<(), Box<dyn Error>> {
 		//! Assign a value to a key.
-		self.recurve.write(|recurve_writer| {
+		self.recurve.draw(|scope| {
 			let target = key_target(key);
-			recurve_writer.write_target_properties(&target, vec![
+			scope.release_target_properties(&target, vec![
 				(&VALUE_RING, Arrow::String(value.to_value_string()))
 			]);
 		})?;

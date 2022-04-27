@@ -13,9 +13,9 @@ pub fn read_ordered(blog: &Target, chamber: &Chamber) -> io::Result<Vec<Target>>
 }
 
 pub fn create(title: &str, body: &str, blog: &Target, recurve: &Recurve) -> io::Result<Target> {
-	recurve.write(|write| {
+	recurve.draw(|write| {
 		let post = write.new_target("blog-post");
-		write.write_target_properties(&post, vec![
+		write.release_target_properties(&post, vec![
 			(TITLE, Arrow::String(title.to_string())),
 			(BODY, Arrow::String(body.to_string())),
 			(BLOG_ID, Arrow::Target(blog.to_owned())),

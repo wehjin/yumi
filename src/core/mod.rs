@@ -1,24 +1,26 @@
 use std::hash::Hash;
 
 pub use arrow::*;
-pub use target::*;
 pub use ring::*;
+pub use target::*;
 
 mod arrow;
 mod target;
 mod ring;
 
 
+/// A `Volley` is a group of `Flights`.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub(crate) struct Speech {
+pub struct Volley {
 	pub flights: Vec<Flight>,
 }
 
-pub trait Writable {
+/// A `CanVolley` is anything that can become a `Volley`.
+pub trait CanVolley {
 	fn to_flights(&self) -> Vec<Flight>;
 }
 
-/// `Archer`, `Target`, `Ring`, and `Arrow` in one structure.
+/// A `Flight` is an `Archer`, `Target`, `Ring`, and `Arrow` in one structure.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Flight {
 	pub archer: Archer,

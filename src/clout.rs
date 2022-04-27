@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::ops::Index;
 
-use crate::{Arrow, Ring, Flight, Archer, Target, Writable};
+use crate::{Arrow, Ring, Flight, Archer, Target, CanVolley};
 
 #[cfg(test)]
 mod tests {
@@ -50,7 +50,7 @@ impl Index<&Ring> for Clout {
 	fn index(&self, index: &Ring) -> &Self::Output { &self.properties[index] }
 }
 
-impl Writable for Clout {
+impl CanVolley for Clout {
 	fn to_flights(&self) -> Vec<Flight> {
 		self.properties.keys()
 			.map(|ring| Flight {

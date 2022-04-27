@@ -7,7 +7,7 @@ use crate::hamt::Key;
 /// A `Ring` is a sub-location on a `Target`.
 #[derive(Debug, Clone, Eq, Hash)]
 pub enum Ring {
-	Unit,
+	Center,
 	String { aspect: String, name: String },
 	Static { aspect: &'static str, name: &'static str },
 }
@@ -15,7 +15,7 @@ pub enum Ring {
 impl Key for Ring {}
 
 impl Default for Ring {
-	fn default() -> Self { Ring::Unit }
+	fn default() -> Self { Ring::Center }
 }
 
 impl<S: AsRef<str>> From<(S, S)> for Ring {
@@ -30,7 +30,7 @@ impl<S: AsRef<str>> From<(S, S)> for Ring {
 impl ReadBytes<Ring> for Ring {
 	fn read_bytes(reader: &mut impl Read) -> io::Result<Self> {
 		match u8::read_bytes(reader)? {
-			0 => Ok(Ring::Unit),
+			0 => Ok(Ring::Center),
 			1 | 2 => {
 				let name = String::read_bytes(reader)?;
 				let aspect = String::read_bytes(reader)?;
@@ -44,7 +44,7 @@ impl ReadBytes<Ring> for Ring {
 impl WriteBytes for Ring {
 	fn write_bytes(&self, writer: &mut impl Write) -> io::Result<usize> {
 		match self {
-			Ring::Unit => {
+			Ring::Center => {
 				writer.write_all(&[0])?;
 				Ok(1)
 			}
@@ -67,18 +67,18 @@ impl WriteBytes for Ring {
 impl PartialEq for Ring {
 	fn eq(&self, other: &Self) -> bool {
 		match self {
-			Ring::Unit => match other {
-				Ring::Unit => true,
+			Ring::Center => match other {
+				Ring::Center => true,
 				Ring::String { .. } => false,
 				Ring::Static { .. } => false
 			}
 			Ring::String { name: name_a, aspect: aspect_a } => match other {
-				Ring::Unit => false,
+				Ring::Center => false,
 				Ring::String { name, aspect } => name_a == name && aspect_a == aspect,
 				Ring::Static { name, aspect } => name_a == name && aspect_a == aspect,
 			},
 			Ring::Static { name: name_a, aspect: aspect_a } => match other {
-				Ring::Unit => false,
+				Ring::Center => false,
 				Ring::String { name, aspect } => name_a == name && aspect_a == aspect,
 				Ring::Static { name, aspect } => name_a == name && aspect_a == aspect,
 			}

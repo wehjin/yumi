@@ -3,7 +3,7 @@ use recurvedb::diary::{Diary, FlightPos};
 
 #[test]
 fn main() {
-	let start_flight = Flight { archer: Archer::Unit, target: Target::Unit, ring: Ring::Unit, arrow: Some(Arrow::Number(3)) };
+	let start_flight = Flight { archer: Archer::Unit, target: Target::Unit, ring: Ring::Center, arrow: Some(Arrow::Number(3)) };
 	let (path, pos) = {
 		let diary = Diary::temp().unwrap();
 		let mut writer = diary.writer().unwrap();

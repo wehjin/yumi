@@ -95,7 +95,7 @@ impl Chamber {
 	}
 
 	pub fn arrow_or_none(&mut self) -> Option<Arrow> {
-		self.arrow_at_target_ring_or_none(&Target::Unit, &Ring::Unit)
+		self.arrow_at_target_ring_or_none(&Target::Unit, &Ring::Center)
 	}
 
 	fn read_arrow(&self, target: &Target, ring: &Ring) -> io::Result<Option<Arrow>> {

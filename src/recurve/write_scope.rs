@@ -1,34 +1,37 @@
-use crate::{Target, Ring, Flight, Archer, Arrow, Writable};
+use crate::{Archer, Arrow, CanVolley, Flight, Ring, Target};
 use crate::util::unique_name;
 
-/// WriteScope allows a function to write facts into the database.
-pub struct WriteScope {
-	pub flights: Vec<Flight>
+/// `DrawScope` allows a function to release `Arrows` into the database.
+pub struct DrawScope {
+	pub flights: Vec<Flight>,
 }
 
-impl WriteScope {
+impl DrawScope {
 	pub fn new_target(&self, prefix: &str) -> Target { Target::String(unique_name(prefix)) }
 
-	pub fn writable(&mut self, writable: &impl Writable) {
-		self.flights(writable.to_flights())
+	pub fn release(&mut self, can_volley: &impl CanVolley) {
+		self.release_volley(can_volley.to_flights())
 	}
 
-	pub fn write_target_properties(&mut self, target: &Target, properties: Vec<(&Ring, Arrow)>) {
+	// TODO Find a better name for properties
+	pub fn release_target_properties(&mut self, target: &Target, properties: Vec<(&Ring, Arrow)>) {
 		for (ring, arrow) in properties {
 			let flight = Flight { archer: Archer::Unit, target: target.to_owned(), ring: ring.to_owned(), arrow: Some(arrow) };
 			self.flights.push(flight)
 		}
 	}
 
-	pub fn attributes(&mut self, attributes: Vec<(&Ring, Arrow)>) {
-		self.write_target_properties(&Target::Unit, attributes)
+	// TODO Delete this method or move elsewhere
+	pub fn release_unit_attributes(&mut self, attributes: Vec<(&Ring, Arrow)>) {
+		self.release_target_properties(&Target::Unit, attributes)
 	}
 
-	pub fn arrow(&mut self, arrow: Arrow) {
-		self.attributes(vec![(&Ring::Unit, arrow)])
+	// TODO Delete this method or move elsewhere
+	pub fn release_unit_center_ring_arrow(&mut self, arrow: Arrow) {
+		self.release_unit_attributes(vec![(&Ring::Center, arrow)])
 	}
 
-	fn flights(&mut self, flight: Vec<Flight>) {
-		self.flights.extend(flight);
+	fn release_volley(&mut self, volley: Vec<Flight>) {
+		self.flights.extend(volley);
 	}
 }

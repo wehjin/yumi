@@ -4,9 +4,9 @@ use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
-pub use write_scope::WriteScope;
+pub use write_scope::DrawScope;
 
-use crate::{Chamber, diary, Flight, hamt, Speech};
+use crate::{Chamber, diary, Flight, hamt, Volley};
 use crate::bytes::{ReadBytes, WriteBytes};
 use crate::diary::Diary;
 use crate::hamt::{Hamt, ProdAB, Root, ROOT_LEN};
@@ -21,7 +21,7 @@ pub struct Recurve {
 }
 
 enum Action {
-	Speech(Speech, Sender<io::Result<Chamber>>),
+	Release(Volley, Sender<io::Result<Chamber>>),
 	Latest(Sender<Chamber>),
 }
 
@@ -37,8 +37,8 @@ impl Recurve {
 			let mut recurve = InnerRecurve::new(folder_path);
 			for action in rx {
 				match action {
-					Action::Speech(speech, tx) => {
-						let new_chamber = recurve.write_speech(speech);
+					Action::Release(volley, tx) => {
+						let new_chamber = recurve.release(volley);
 						tx.send(new_chamber).unwrap();
 					}
 					Action::Latest(tx) => {
@@ -53,16 +53,16 @@ impl Recurve {
 
 	/// Opens a scope for writing facts to the database and provides it to the
 	/// given function.
-	pub fn write<R>(&self, f: impl Fn(&mut WriteScope) -> R) -> io::Result<R> {
-		let mut write = WriteScope { flights: Vec::new() };
-		let result = f(&mut write);
-		self.write_speech(Speech { flights: write.flights })?;
+	pub fn draw<R>(&self, f: impl Fn(&mut DrawScope) -> R) -> io::Result<R> {
+		let mut draw = DrawScope { flights: Vec::new() };
+		let result = f(&mut draw);
+		self.release(Volley { flights: draw.flights })?;
 		Ok(result)
 	}
 
-	fn write_speech(&self, speech: Speech) -> io::Result<Chamber> {
+	fn release(&self, volley: Volley) -> io::Result<Chamber> {
 		let (tx, rx) = channel::<io::Result<Chamber>>();
-		let action = Action::Speech(speech, tx);
+		let action = Action::Release(volley, tx);
 		self.tx.send(action).unwrap();
 		rx.recv().map_err(io_error)?
 	}
@@ -85,8 +85,8 @@ struct InnerRecurve {
 }
 
 impl InnerRecurve {
-	fn write_speech(&mut self, speech: Speech) -> io::Result<Chamber> {
-		for flight in speech.flights.into_iter() {
+	fn release(&mut self, volley: Volley) -> io::Result<Chamber> {
+		for flight in volley.flights.into_iter() {
 			let mut diary_reader = self.diary_writer.reader()?;
 			self.write_target_rings(&flight, &mut diary_reader)?;
 			self.write_ring_targets(&flight, &mut diary_reader)?;

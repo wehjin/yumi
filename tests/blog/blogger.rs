@@ -9,9 +9,9 @@ pub fn create_if_none(recurve: &Recurve) -> io::Result<Target> {
 	let old_blogger = read(&recurve.chamber()?)?;
 	let blogger = match old_blogger {
 		Some(target) => target.clone(),
-		None => recurve.write(|write| {
+		None => recurve.draw(|write| {
 			let blogger = write.new_target("blogger");
-			write.write_target_properties(&blogger, vec![
+			write.release_target_properties(&blogger, vec![
 				(NAME, Arrow::String("Alice".to_string()))
 			]);
 			blogger
