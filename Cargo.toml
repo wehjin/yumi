@@ -6,8 +6,20 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "echodb"
+path = "src/lib.rs"
+
+[[bin]]
+name = "canyon"
+path = "src/bin/canyon/main.rs"
+
 [dependencies]
 rand = "0.8.5"
+clap = { version = "3.1.12", features = ["derive"] }
+toml = "0.5.9"
+serde = "1.0"
+serde_derive = "1.0"
 
 [dev-dependencies]
 uuid = { version = "0.8.1", features = ["serde", "v4"] }
