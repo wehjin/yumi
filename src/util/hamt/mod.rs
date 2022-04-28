@@ -3,13 +3,14 @@ use std::io;
 
 pub use root::*;
 
-use crate::{diary, hamt};
-use crate::bytes::{ReadBytes, WriteBytes};
-use crate::hamt::frame::SlotIndex;
-use crate::hamt::hasher::UniversalHasher;
-use crate::hamt::slot::Slot;
-use crate::hamt::slot_indexer::UniversalSlotPicker;
-use crate::hamt::writer::Writer;
+use crate::util::hamt;
+use crate::util::bytes::{ReadBytes, WriteBytes};
+use crate::util::hamt::frame::SlotIndex;
+use crate::util::hamt::hasher::UniversalHasher;
+use crate::util::hamt::slot::Slot;
+use crate::util::hamt::slot_indexer::UniversalSlotPicker;
+use crate::util::hamt::writer::Writer;
+use crate::util::diary;
 
 pub(crate) use self::reader::Reader;
 

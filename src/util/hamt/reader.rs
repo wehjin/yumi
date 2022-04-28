@@ -1,17 +1,17 @@
 use std::io;
 
-use crate::diary;
-use crate::hamt::{frame, Root};
-use crate::hamt::frame::SlotIndex;
-use crate::hamt::slot::Slot;
-use crate::hamt::slot_indexer::SlotIndexer;
+use crate::util::diary;
+use crate::util::hamt::{frame, Root};
+use crate::util::hamt::frame::SlotIndex;
+use crate::util::hamt::slot::Slot;
+use crate::util::hamt::slot_indexer::SlotIndexer;
 
 #[cfg(test)]
 mod tests {
-	use crate::diary::Diary;
-	use crate::hamt::data::fixture::ZeroThenKeySlotIndexer;
-	use crate::hamt::reader::Reader;
-	use crate::hamt::Root;
+	use crate::util::diary::Diary;
+	use crate::util::hamt::data::fixture::ZeroThenKeySlotIndexer;
+	use crate::util::hamt::reader::Reader;
+	use crate::util::hamt::Root;
 
 	#[test]
 	fn empty_produces_no_value() {

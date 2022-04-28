@@ -1,12 +1,12 @@
 use std::ops::{Deref, DerefMut};
 
-use crate::hamt::hasher::universal;
+use crate::util::hamt::hasher::universal;
 
 #[cfg(test)]
 mod tests {
 	use std::collections::HashSet;
 
-	use crate::hamt::slot_indexer::{SlotIndexer, UniversalSlotPicker};
+	use crate::util::hamt::slot_indexer::{SlotIndexer, UniversalSlotPicker};
 
 	#[test]
 	fn keys_under_256_cyclically_map_to_themselves() {

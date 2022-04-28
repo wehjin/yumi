@@ -4,7 +4,7 @@ use crate::util;
 
 #[cfg(test)]
 mod tests {
-	use crate::hamt::hasher::universal;
+	use crate::util::hamt::hasher::universal;
 
 	#[test]
 	fn keys_under_256_hash_to_themselves() {

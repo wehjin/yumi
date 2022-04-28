@@ -1,20 +1,20 @@
 use std::io;
 
-use crate::diary;
-use crate::hamt::{frame, Root, slot};
-use crate::hamt::frame::SlotIndex;
-use crate::hamt::slot::Slot;
+use crate::util::diary;
+use crate::util::hamt::{frame, Root, slot};
+use crate::util::hamt::frame::SlotIndex;
+use crate::util::hamt::slot::Slot;
 
 #[cfg(test)]
 mod tests {
 	use std::error::Error;
 	use std::path::Path;
 
-	use crate::diary::Diary;
-	use crate::hamt::{frame, Root};
-	use crate::hamt::frame::read_write::WriteSlot;
-	use crate::hamt::frame::SlotIndex;
-	use crate::hamt::slot::Slot;
+	use crate::util::diary::Diary;
+	use crate::util::hamt::{frame, Root};
+	use crate::util::hamt::frame::read_write::WriteSlot;
+	use crate::util::hamt::frame::SlotIndex;
+	use crate::util::hamt::slot::Slot;
 
 	#[test]
 	fn revised_root() -> Result<(), Box<dyn Error>> {

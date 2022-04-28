@@ -1,7 +1,7 @@
 use std::io::{Read, Write};
 use std::io;
 
-use crate::bytes::{ReadBytes, WriteBytes};
+use crate::util::bytes::{ReadBytes, WriteBytes};
 use crate::Target;
 
 /// An `Arrow` is  a piece of data stored in the database.
@@ -89,7 +89,7 @@ mod tests {
 	use std::io::Cursor;
 
 	use crate::Arrow;
-	use crate::bytes::{ReadBytes, WriteBytes};
+	use crate::util::bytes::{ReadBytes, WriteBytes};
 
 	#[test]
 	fn text() {

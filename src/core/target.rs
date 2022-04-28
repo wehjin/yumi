@@ -1,8 +1,8 @@
 use std::io::{Read, Write};
 use std::io;
 
-use crate::bytes::{ReadBytes, WriteBytes};
-use crate::hamt::Key;
+use crate::util::bytes::{ReadBytes, WriteBytes};
+use crate::util::hamt::Key;
 
 /// A `Target` is location in the database where an `Arrow` can be attached.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]

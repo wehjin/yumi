@@ -1,9 +1,9 @@
 use std::io;
 use std::io::{Read, Write};
 
-use crate::bytes::{ReadBytes, WriteBytes};
-use crate::hamt::slot::Slot;
-pub(crate) use crate::hamt::slot::SLOT_LEN as ROOT_LEN;
+use crate::util::bytes::{ReadBytes, WriteBytes};
+use crate::util::hamt::slot::Slot;
+pub(crate) use crate::util::hamt::slot::SLOT_LEN as ROOT_LEN;
 
 pub(crate) use self::prod_ab::*;
 

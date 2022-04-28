@@ -1,25 +1,25 @@
 use std::io;
 use std::io::ErrorKind;
 
-use crate::diary;
-use crate::hamt::frame::{SlotIndex, WriteSlot};
-use crate::hamt::frame;
-use crate::hamt::reader::Reader;
-use crate::hamt::root::Root;
-use crate::hamt::slot::Slot;
-use crate::hamt::slot_indexer::SlotIndexer;
+use crate::util::diary;
+use crate::util::hamt::frame::{SlotIndex, WriteSlot};
+use crate::util::hamt::frame;
+use crate::util::hamt::reader::Reader;
+use crate::util::hamt::root::Root;
+use crate::util::hamt::slot::Slot;
+use crate::util::hamt::slot_indexer::SlotIndexer;
 
 #[cfg(test)]
 mod tests {
 	use std::error::Error;
 	use std::path::PathBuf;
 
-	use crate::diary::Diary;
-	use crate::hamt::data::{fixture::ZeroThenKeySlotIndexer};
-	use crate::hamt::reader::Reader;
-	use crate::hamt::Root;
-	use crate::hamt::slot_indexer::SlotIndexer;
-	use crate::hamt::writer::Writer;
+	use crate::util::diary::Diary;
+	use crate::util::hamt::data::{fixture::ZeroThenKeySlotIndexer};
+	use crate::util::hamt::reader::Reader;
+	use crate::util::hamt::Root;
+	use crate::util::hamt::slot_indexer::SlotIndexer;
+	use crate::util::hamt::writer::Writer;
 
 	#[test]
 	fn double_write_multiple_collision_changes_read() -> Result<(), Box<dyn Error>> {

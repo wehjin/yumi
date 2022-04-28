@@ -1,15 +1,15 @@
 use std::io;
 use std::io::{Read, Write};
 
-use crate::bytes::{ReadBytes, WriteBytes};
+use crate::util::bytes::{ReadBytes, WriteBytes};
 
 #[cfg(test)]
 mod tests {
 	use std::error::Error;
 	use std::io::{Cursor, Seek, SeekFrom};
 
-	use crate::bytes::{ReadBytes, WriteBytes};
-	use crate::hamt::{ProdAB, Root};
+	use crate::util::bytes::{ReadBytes, WriteBytes};
+	use crate::util::hamt::{ProdAB, Root};
 
 	#[test]
 	fn write_read() -> Result<(), Box<dyn Error>> {

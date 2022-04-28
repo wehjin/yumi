@@ -1,8 +1,8 @@
 use std::io::{Read, Write};
 use std::io;
 
-use crate::bytes::{ReadBytes, WriteBytes};
-use crate::hamt::Key;
+use crate::util::bytes::{ReadBytes, WriteBytes};
+use crate::util::hamt::Key;
 
 /// A `Ring` is a sub-location on a `Target`.
 #[derive(Debug, Clone, Eq, Hash)]

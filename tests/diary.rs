@@ -1,5 +1,5 @@
 use recurvedb::{Target, Ring, Flight, Archer, Arrow};
-use recurvedb::diary::{Diary, FlightPos};
+use recurvedb::util::diary::{Diary, FlightPos};
 
 #[test]
 fn main() {

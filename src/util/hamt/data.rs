@@ -1,6 +1,6 @@
 #[cfg(test)]
 pub mod fixture {
-	use crate::hamt::slot_indexer::SlotIndexer;
+	use crate::util::hamt::slot_indexer::SlotIndexer;
 
 	pub struct ZeroThenKeySlotIndexer {
 		pub key: u32,

@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::hash::{Hash, Hasher};
 
-use recurvedb::diary::Diary;
-use recurvedb::hamt::{Hamt, Key, Root};
+use recurvedb::util::diary::Diary;
+use recurvedb::util::hamt::{Hamt, Key, Root};
 
 #[cfg(test)]
 mod diary;

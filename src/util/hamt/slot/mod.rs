@@ -1,8 +1,8 @@
 use std::io;
 use std::io::{Read, Write};
 
-use crate::bytes::{ReadBytes, WriteBytes};
-use crate::hamt::root::Root;
+use crate::util::bytes::{ReadBytes, WriteBytes};
+use crate::util::hamt::root::Root;
 use crate::util::{clr_high_bit, is_high_bit_set, set_high_bit, U32x2};
 
 pub(crate) use self::read_write::{Reader, SLOT_LEN, Writer};

@@ -3,9 +3,10 @@ use std::io;
 use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
-use crate::{diary, Flight};
-use crate::bytes::WriteBytes;
-use crate::diary::{Pos, FlightPos};
+use crate::Flight;
+use crate::util::bytes::WriteBytes;
+use crate::util::diary::{FlightPos, Pos};
+use crate::util::diary;
 
 pub struct Writer {
 	path: PathBuf,

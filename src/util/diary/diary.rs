@@ -4,7 +4,7 @@ use std::fs::OpenOptions;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crate::diary::{Reader, Writer};
+use crate::util::diary::{Reader, Writer};
 use crate::util;
 
 /// `Diary` holds a file path and a virtual length for the file. Bytes

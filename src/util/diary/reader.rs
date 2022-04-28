@@ -3,9 +3,10 @@ use std::io;
 use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
-use crate::{diary, Target, Ring, Flight, Arrow};
-use crate::bytes::ReadBytes;
+use crate::{Arrow, Flight, Ring, Target};
+use crate::util::bytes::ReadBytes;
 use crate::Archer;
+use crate::util::diary;
 
 pub struct Reader {
 	file_path: PathBuf,

@@ -6,11 +6,11 @@ use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
 pub use write_scope::DrawScope;
 
-use crate::{Bundle, diary, Flight, hamt, Volley};
-use crate::bytes::{ReadBytes, WriteBytes};
-use crate::diary::Diary;
-use crate::hamt::{Hamt, ProdAB, Root, ROOT_LEN};
-use crate::util::io_error;
+use crate::{Bundle, Flight, Volley};
+use crate::util::bytes::{ReadBytes, WriteBytes};
+use crate::util::diary::Diary;
+use crate::util::hamt::{Hamt, ProdAB, Root, ROOT_LEN};
+use crate::util::{diary, hamt, io_error};
 
 mod write_scope;
 

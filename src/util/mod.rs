@@ -5,6 +5,10 @@ use std::string::FromUtf8Error;
 use std::sync::mpsc::RecvError;
 use std::error::Error;
 
+pub mod bytes;
+pub mod diary;
+pub mod hamt;
+
 pub fn temp_dir(prefix: &str) -> Result<PathBuf, Box<dyn Error>> {
 	let mut path = std::env::temp_dir();
 	let string = unique_name(prefix);

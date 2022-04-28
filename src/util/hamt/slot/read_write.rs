@@ -1,14 +1,14 @@
 use std::io;
 
-use crate::diary;
-use crate::hamt::slot::Slot;
+use crate::util::diary;
+use crate::util::hamt::slot::Slot;
 
 #[cfg(test)]
 mod tests {
-	use crate::diary::Diary;
-	use crate::hamt::{Root, slot};
-	use crate::hamt::slot::read_write::SLOT_LEN;
-	use crate::hamt::slot::Slot;
+	use crate::util::diary::Diary;
+	use crate::util::hamt::{Root, slot};
+	use crate::util::hamt::slot::read_write::SLOT_LEN;
+	use crate::util::hamt::slot::Slot;
 
 	#[test]
 	#[should_panic]

@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::io;
 
-use crate::{Arrow, diary, Ring, Target};
-use crate::hamt::{Hamt, ProdAB, Reader, Root};
+use crate::{Arrow, Ring, Target};
+use crate::util::hamt::{Hamt, ProdAB, Reader, Root};
+use crate::util::diary;
 
 /// A `Bundle` provides methods to retrieve the data released into the database.
 ///
