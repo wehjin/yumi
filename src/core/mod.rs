@@ -29,6 +29,10 @@ pub struct Flight {
 	pub arrow: Option<Arrow>,
 }
 
+impl CanVolley for Flight {
+	fn to_flights(&self) -> Vec<Flight> { vec![self.clone()] }
+}
+
 /// An `Archer` is a writer of the database.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Archer {

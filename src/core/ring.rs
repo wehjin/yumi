@@ -20,11 +20,22 @@ impl Default for Ring {
 
 impl<S: AsRef<str>> From<(S, S)> for Ring {
 	fn from((name, aspect): (S, S)) -> Self {
-		Ring::String {
-			name: name.as_ref().to_owned(),
-			aspect: aspect.as_ref().to_owned(),
-		}
+		let name = name.as_ref().to_owned();
+		let aspect = aspect.as_ref().to_owned();
+		Ring::String { name, aspect }
 	}
+}
+
+pub fn string_ring_at_divider(s: impl AsRef<str>, divider: char) -> Ring {
+	let sides = s.as_ref().split(divider).collect::<Vec<_>>();
+	let (aspect, name) = if sides.len() > 1 {
+		(sides[0], sides[1])
+	} else if sides.len() > 0 {
+		("", sides[0])
+	} else {
+		("", "")
+	};
+	Ring::String { aspect: aspect.to_string(), name: name.to_string() }
 }
 
 impl ReadBytes<Ring> for Ring {

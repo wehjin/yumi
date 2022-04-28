@@ -7,7 +7,7 @@ use std::error::Error;
 
 use clap::Command;
 
-use crate::subcommand::{init, kv};
+use crate::subcommand::{init, kv, recall, release};
 
 mod subcommand;
 mod settings;
@@ -19,6 +19,8 @@ fn cli() -> Command<'static> {
 		.arg_required_else_help(true)
 		.subcommand(init::cli())
 		.subcommand(kv::cli())
+		.subcommand(release::cli())
+		.subcommand(recall::cli())
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -26,7 +28,11 @@ fn main() -> Result<(), Box<dyn Error>> {
 	match matches.subcommand() {
 		Some(("init", _sub_matches)) => init::main()?,
 		Some(("kv", sub_matches)) => kv::main(sub_matches)?,
+		Some((release::COMMAND_NAME, sub_matches)) => release::main(sub_matches)?,
+		Some((recall::COMMAND_NAME, sub_matches)) => recall::main(sub_matches)?,
 		_ => unreachable!(),
 	}
 	Ok(())
 }
+
+

@@ -12,8 +12,13 @@ pub enum Target {
 }
 
 impl Target {
-	pub fn new<S: AsRef<str>>(s: S) -> Self {
-		Target::String(s.as_ref().to_string())
+	pub fn new<S: AsRef<str>>(s: S) -> Self { s.into() }
+}
+
+impl<T: AsRef<str>> From<T> for Target {
+	fn from(s: T) -> Self {
+		let s = s.as_ref().to_string();
+		Target::String(s)
 	}
 }
 

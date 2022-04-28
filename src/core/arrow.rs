@@ -1,8 +1,8 @@
 use std::io::{Read, Write};
 use std::io;
 
-use crate::util::bytes::{ReadBytes, WriteBytes};
 use crate::Target;
+use crate::util::bytes::{ReadBytes, WriteBytes};
 
 /// An `Arrow` is  a piece of data stored in the database.
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -40,6 +40,15 @@ impl Arrow {
 			Arrow::String(s) => s.to_string(),
 			Arrow::Target(target) => format!("{:?}", target),
 		}
+	}
+}
+
+pub fn string_arrow_if_not_empty(s: impl AsRef<str>) -> Option<Arrow> {
+	let s = s.as_ref();
+	if s.is_empty() {
+		None
+	} else {
+		Some(Arrow::String(s.to_string()))
 	}
 }
 
