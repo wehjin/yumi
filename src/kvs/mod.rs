@@ -10,11 +10,11 @@ use std::io;
 use std::io::ErrorKind;
 use std::path::Path;
 
-use crate::{Arrow, Chamber, Recurve, Ring, Target};
+use crate::{Arrow, Bundle, Recurve, Ring, Target};
 
 /// Read values at keys.
 pub struct Catalog {
-	chamber: Chamber,
+	bundle: Bundle,
 }
 
 /// Write values to keys and acquire catalogs.
@@ -39,7 +39,7 @@ impl Catalog {
 	pub fn read<K: Key, V: Value, F: Fn() -> V>(&self, key: &K, fallback: F) -> Result<V, Box<dyn Error>> {
 		//! Read the value at key.
 		let target = key_target(key);
-		let arrow = self.chamber.arrow_at_target_ring_or_none(&target, &VALUE_RING);
+		let arrow = self.bundle.arrow_at_target_ring_or_none(&target, &VALUE_RING);
 		match arrow {
 			None => Ok(fallback()),
 			Some(ref arrow) => if let Arrow::String(ref s) = arrow {
@@ -65,8 +65,8 @@ impl Store {
 	}
 	pub fn catalog(&self) -> Result<Catalog, Box<dyn Error>> {
 		//! Acquire a reader for the current state of the store.
-		let chamber = self.recurve.chamber()?;
-		Ok(Catalog { chamber })
+		let bundle = self.recurve.to_bundle()?;
+		Ok(Catalog { bundle })
 	}
 }
 

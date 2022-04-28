@@ -2,7 +2,7 @@ use std::{io, thread};
 use std::error::Error;
 use std::sync::mpsc::channel;
 
-use recurvedb::{Arrow, Clout, CloutFilter, Flight, Recurve, Ring, Target, CanVolley};
+use recurvedb::{Arrow, CanVolley, Clout, CloutFilter, Flight, Recurve, Ring, Target};
 use recurvedb::util::unique_name;
 
 const COUNT: Ring = Ring::Static { name: "count", aspect: "Counter" };
@@ -46,12 +46,12 @@ impl<'a> CloutFilter<'a> for Counter {
 #[test]
 fn filter() {
 	let counter = Counter::new("card-counter", 7, 56);
-	let mut chamber = {
+	let mut bundle = {
 		let recurve = Recurve::connect(&unique_name("x-holder"), &std::env::temp_dir());
 		recurve.draw(|txn| txn.release(&counter)).unwrap();
-		recurve.chamber().unwrap()
+		recurve.to_bundle().unwrap()
 	};
-	let counters = chamber.clouts::<Counter>().unwrap();
+	let counters = bundle.clouts::<Counter>().unwrap();
 	assert_eq!(1, counters.len());
 	let final_counter = &counters[0];
 	assert_eq!(final_counter, &counter);
@@ -84,8 +84,8 @@ fn multi_thread() -> Result<(), Box<dyn Error>> {
 	};
 	job1.join().unwrap()?;
 	job2.join().unwrap()?;
-	let chamber = recurve.chamber()?;
-	let attributes = chamber.properties(vec![&COUNT, &MAX_COUNT]);
+	let bundle = recurve.to_bundle()?;
+	let attributes = bundle.properties(vec![&COUNT, &MAX_COUNT]);
 	assert_eq!(attributes.len(), 2);
 	Ok(())
 }
@@ -107,8 +107,8 @@ fn double_reconnect() -> Result<(), Box<dyn Error>> {
 		})?;
 	}
 	let recurve = Recurve::connect(&path, &std::env::temp_dir());
-	let mut chamber = recurve.chamber()?;
-	assert_eq!(chamber.arrow_or_none(), Some(Arrow::Number(10)));
+	let mut bundle = recurve.to_bundle()?;
+	assert_eq!(bundle.arrow_or_none(), Some(Arrow::Number(10)));
 	Ok(())
 }
 
@@ -124,8 +124,8 @@ fn reconnect() -> Result<(), Box<dyn Error>> {
 		path
 	};
 	let recurve = Recurve::connect(&path, &std::env::temp_dir());
-	let mut chamber = recurve.chamber()?;
-	assert_eq!(chamber.arrow_or_none(), Some(Arrow::Number(10)));
+	let mut bundle = recurve.to_bundle()?;
+	assert_eq!(bundle.arrow_or_none(), Some(Arrow::Number(10)));
 	Ok(())
 }
 
@@ -138,7 +138,7 @@ fn targets_with_ring() -> Result<(), Box<dyn Error>> {
 		shout.release_target_properties(&dracula, vec![(&COUNT, Arrow::Number(3))]);
 		shout.release_target_properties(&bo_peep, vec![(&COUNT, Arrow::Number(7))]);
 	})?;
-	let mut targets = recurve.chamber()?.targets_with_ring(&COUNT)?;
+	let mut targets = recurve.to_bundle()?.targets_with_ring(&COUNT)?;
 	targets.sort();
 	assert_eq!(targets, vec![bo_peep, dracula]);
 	Ok(())
@@ -151,7 +151,7 @@ fn target_attributes() -> Result<(), Box<dyn Error>> {
 	recurve.draw(|shout| {
 		shout.release_target_properties(&dracula, vec![(&COUNT, Arrow::Number(3))]);
 	})?;
-	let attributes = recurve.chamber()?.arrows_at_target_rings(&dracula, vec![&COUNT]);
+	let attributes = recurve.to_bundle()?.arrows_at_target_rings(&dracula, vec![&COUNT]);
 	assert_eq!(attributes.get(&COUNT), Some(&Arrow::Number(3)));
 	Ok(())
 }
@@ -165,7 +165,7 @@ fn attributes() -> Result<(), Box<dyn Error>> {
 			(&COUNT, Arrow::Number(0)),
 		]);
 	})?;
-	let attributes = recurve.chamber()?.properties(vec![&MAX_COUNT, &COUNT]);
+	let attributes = recurve.to_bundle()?.properties(vec![&MAX_COUNT, &COUNT]);
 	assert_eq!(attributes, vec![
 		(&MAX_COUNT, Some(Arrow::Number(100))),
 		(&COUNT, Some(Arrow::Number(0))),
@@ -176,12 +176,12 @@ fn attributes() -> Result<(), Box<dyn Error>> {
 #[test]
 fn arrow() -> Result<(), Box<dyn Error>> {
 	let recurve = Recurve::connect(&unique_name("recurve-test-"), &std::env::temp_dir());
-	let mut old_chamber = recurve.chamber()?;
+	let mut old_bundle = recurve.to_bundle()?;
 	recurve.draw(|write| {
 		write.release_unit_center_ring_arrow(Arrow::Number(3))
 	})?;
-	let mut new_chamber = recurve.chamber()?;
-	assert_eq!(new_chamber.arrow_or_none(), Some(Arrow::Number(3)));
-	assert_eq!(old_chamber.arrow_or_none(), None);
+	let mut new_bundle = recurve.to_bundle()?;
+	assert_eq!(new_bundle.arrow_or_none(), Some(Arrow::Number(3)));
+	assert_eq!(old_bundle.arrow_or_none(), None);
 	Ok(())
 }

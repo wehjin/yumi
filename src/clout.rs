@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::ops::Index;
 
-use crate::{Arrow, Ring, Flight, Archer, Target, CanVolley};
+use crate::{Archer, Arrow, CanVolley, Flight, Ring, Target};
 
 #[cfg(test)]
 mod tests {
@@ -20,7 +20,7 @@ mod tests {
 	}
 }
 
-/// A `Clout` allows a user see what `Arrow`s are in a `Target` within a `Ring`.
+/// A `Clout` is a `Target` grouped together with the `Arrows` that struck it.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Clout {
 	pub target: Target,

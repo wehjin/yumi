@@ -4,14 +4,17 @@ use std::io;
 use crate::{Arrow, diary, Ring, Target};
 use crate::hamt::{Hamt, ProdAB, Reader, Root};
 
-pub struct Chamber {
+/// A `Bundle` provides methods to retrieve the data released into the database.
+///
+/// It is acquired from a `Recurve` instance.
+pub struct Bundle {
 	pub(crate) target_rings_reader: Reader,
 	pub(crate) ring_targets_reader: Reader,
 	pub(crate) diary_reader: diary::Reader,
 }
 
 
-impl Chamber {
+impl Bundle {
 	pub fn clouts<'a, F: CloutFilter<'a>>(&mut self) -> io::Result<Vec<F>> {
 		let targets = self.targets_with_ring(F::key_ring())?;
 		let clouts = targets.into_iter()
@@ -111,6 +114,7 @@ impl Chamber {
 	}
 }
 
+/// A `CloutFilter` restricts the number of `Clouts` found in a query.
 pub trait CloutFilter<'a> {
 	fn key_ring() -> &'a Ring;
 	fn data_rings() -> &'a [&'a Ring];

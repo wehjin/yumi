@@ -6,12 +6,12 @@
 //! ```
 extern crate rand;
 
-pub use self::chamber::*;
+pub use self::bundle::*;
 pub use self::core::*;
 pub use self::recurve::*;
 pub use self::clout::*;
 
-mod chamber;
+mod bundle;
 mod core;
 mod clout;
 mod recurve;

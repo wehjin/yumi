@@ -1,7 +1,7 @@
 use crate::{Archer, Arrow, CanVolley, Flight, Ring, Target};
 use crate::util::unique_name;
 
-/// `DrawScope` allows a function to release `Arrows` into the database.
+/// `DrawScope` allows a function to release `Arrows` into `Targets`.
 pub struct DrawScope {
 	pub flights: Vec<Flight>,
 }
@@ -10,7 +10,7 @@ impl DrawScope {
 	pub fn new_target(&self, prefix: &str) -> Target { Target::String(unique_name(prefix)) }
 
 	pub fn release(&mut self, can_volley: &impl CanVolley) {
-		self.release_volley(can_volley.to_flights())
+		self.release_flights(can_volley.to_flights())
 	}
 
 	// TODO Find a better name for properties
@@ -31,7 +31,7 @@ impl DrawScope {
 		self.release_unit_attributes(vec![(&Ring::Center, arrow)])
 	}
 
-	fn release_volley(&mut self, volley: Vec<Flight>) {
-		self.flights.extend(volley);
+	fn release_flights(&mut self, flights: Vec<Flight>) {
+		self.flights.extend(flights);
 	}
 }

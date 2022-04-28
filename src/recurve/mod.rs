@@ -6,7 +6,7 @@ use std::sync::mpsc::{channel, Sender, sync_channel, SyncSender};
 
 pub use write_scope::DrawScope;
 
-use crate::{Chamber, diary, Flight, hamt, Volley};
+use crate::{Bundle, diary, Flight, hamt, Volley};
 use crate::bytes::{ReadBytes, WriteBytes};
 use crate::diary::Diary;
 use crate::hamt::{Hamt, ProdAB, Root, ROOT_LEN};
@@ -14,15 +14,15 @@ use crate::util::io_error;
 
 mod write_scope;
 
-/// A `Recurve ` is the entry point for writing to and reading from the database.
+/// A `Recurve` is the entry point for releasing data into the database.
 #[derive(Debug, Clone)]
 pub struct Recurve {
 	tx: SyncSender<Action>,
 }
 
 enum Action {
-	Release(Volley, Sender<io::Result<Chamber>>),
-	Latest(Sender<Chamber>),
+	Release(Volley, Sender<io::Result<Bundle>>),
+	Latest(Sender<Bundle>),
 }
 
 impl Recurve {
@@ -38,12 +38,12 @@ impl Recurve {
 			for action in rx {
 				match action {
 					Action::Release(volley, tx) => {
-						let new_chamber = recurve.release(volley);
-						tx.send(new_chamber).unwrap();
+						let new_bundle = recurve.release(volley);
+						tx.send(new_bundle).unwrap();
 					}
 					Action::Latest(tx) => {
-						let chamber = recurve.chamber().unwrap();
-						tx.send(chamber).unwrap();
+						let bundle = recurve.to_bundle().unwrap();
+						tx.send(bundle).unwrap();
 					}
 				}
 			}
@@ -60,16 +60,16 @@ impl Recurve {
 		Ok(result)
 	}
 
-	fn release(&self, volley: Volley) -> io::Result<Chamber> {
-		let (tx, rx) = channel::<io::Result<Chamber>>();
+	fn release(&self, volley: Volley) -> io::Result<Bundle> {
+		let (tx, rx) = channel::<io::Result<Bundle>>();
 		let action = Action::Release(volley, tx);
 		self.tx.send(action).unwrap();
 		rx.recv().map_err(io_error)?
 	}
 
-	/// Constructs a chamber for reading facts from the database.
-	pub fn chamber(&self) -> io::Result<Chamber> {
-		let (tx, rx) = channel::<Chamber>();
+	/// Constructs a `Bundle` for reading facts from the database.
+	pub fn to_bundle(&self) -> io::Result<Bundle> {
+		let (tx, rx) = channel::<Bundle>();
 		let action = Action::Latest(tx);
 		self.tx.send(action).unwrap();
 		rx.recv().map_err(io_error)
@@ -85,7 +85,7 @@ struct InnerRecurve {
 }
 
 impl InnerRecurve {
-	fn release(&mut self, volley: Volley) -> io::Result<Chamber> {
+	fn release(&mut self, volley: Volley) -> io::Result<Bundle> {
 		for flight in volley.flights.into_iter() {
 			let mut diary_reader = self.diary_writer.reader()?;
 			self.write_target_rings(&flight, &mut diary_reader)?;
@@ -93,7 +93,7 @@ impl InnerRecurve {
 		}
 		self.diary.commit(self.diary_writer.end_size());
 		self.roots_log.write_roots(self.target_rings.root, self.ring_targets.root)?;
-		self.chamber()
+		self.to_bundle()
 	}
 
 	fn write_ring_targets(&mut self, flight: &Flight, diary_reader: &mut diary::Reader) -> io::Result<()> {
@@ -125,13 +125,13 @@ impl InnerRecurve {
 		self.target_rings.write_value(&flight.target, &ring_arrows.root, &mut self.diary_writer)
 	}
 
-	fn chamber(&self) -> io::Result<Chamber> {
-		let chamber = Chamber {
+	fn to_bundle(&self) -> io::Result<Bundle> {
+		let bundle = Bundle {
 			ring_targets_reader: self.ring_targets.reader()?,
 			target_rings_reader: self.target_rings.reader()?,
 			diary_reader: self.diary.reader()?,
 		};
-		Ok(chamber)
+		Ok(bundle)
 	}
 
 	fn new(folder_path: PathBuf) -> Self {

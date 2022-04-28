@@ -14,12 +14,12 @@ fn it_works() -> Result<(), Box<dyn Error>> {
 
 fn review(db_name: &String) -> Result<(), Box<dyn Error>> {
 	let recurve = Recurve::connect(&db_name, &temp_dir());
-	let chamber = recurve.chamber().unwrap();
-	let blogger = blogger::read(&recurve.chamber()?).unwrap().unwrap();
+	let bundle = recurve.to_bundle().unwrap();
+	let blogger = blogger::read(&recurve.to_bundle()?).unwrap().unwrap();
 	let blog = blog::create_if_none(&blogger, &recurve).unwrap();
-	let posts = post::read_ordered(&blog, &chamber).unwrap();
+	let posts = post::read_ordered(&blog, &bundle).unwrap();
 	assert_eq!(posts.len(), 2);
-	assert_eq!(chamber.string(&posts[0], post::BODY), "Elephant ears are big.");
+	assert_eq!(bundle.string(&posts[0], post::BODY), "Elephant ears are big.");
 	Ok(())
 }
 
@@ -29,7 +29,7 @@ fn mutate(db_name: &String) -> Result<(), Box<dyn Error>> {
 	let blog = blog::create_if_none(&blogger, &recurve)?;
 	post::create("Elephant ears", "Elephant ears are big.", &blog, &recurve)?;
 	let post = post::create("Kitten ears", "Kitten ears are cute.", &blog, &recurve)?;
-	assert!(recurve.chamber()?.arrow_at_target_ring_or_none(&post, post::BLOG_ID).is_some());
+	assert!(recurve.to_bundle()?.arrow_at_target_ring_or_none(&post, post::BLOG_ID).is_some());
 	Ok(())
 }
 
