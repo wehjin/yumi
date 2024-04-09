@@ -1,11 +1,12 @@
+use std::error::Error;
 use std::io;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::string::FromUtf8Error;
 use std::sync::mpsc::RecvError;
-use std::error::Error;
 
 pub mod bytes;
+pub mod datom_tree;
 pub mod diary;
 pub mod hamt;
 
