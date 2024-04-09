@@ -6,7 +6,7 @@ use recurvedb::string_ring_at_divider;
 
 pub const COMMAND_NAME: &'static str = "recall";
 
-pub fn cli() -> Command<'static> {
+pub fn cli() -> Command {
 	Command::new(COMMAND_NAME)
 		.about("Pull data from the database")
 		.arg_required_else_help(true)
@@ -15,8 +15,8 @@ pub fn cli() -> Command<'static> {
 }
 
 pub fn main(args: &ArgMatches) -> Result<(), Box<dyn Error>> {
-	let target = args.value_of("TARGET").expect("target");
-	let ring = args.value_of("RING").expect("ring");
+	let target = args.get_one::<String>("TARGET").expect("target");
+	let ring = args.get_one::<String>("RING").expect("ring");
 
 	let recurve = super::connect();
 	let bundle = recurve.to_bundle()?;

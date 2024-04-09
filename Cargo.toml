@@ -16,10 +16,10 @@ path = "src/bin/yumi/main.rs"
 
 [dependencies]
 rand = "0.8.5"
-clap = { version = "3.1.12", features = ["derive"] }
-toml = "0.5.9"
+clap = { version = "4.5.4", features = ["derive"] }
+toml = "0.8.12"
 serde = "1.0"
 serde_derive = "1.0"
 
 [dev-dependencies]
-uuid = { version = "0.8.1", features = ["serde", "v4"] }
+uuid = { version = "1.8.0", features = ["serde", "v4"] }

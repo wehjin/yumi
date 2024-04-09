@@ -15,7 +15,7 @@ mod tests {
 	use std::path::PathBuf;
 
 	use crate::util::diary::Diary;
-	use crate::util::hamt::data::{fixture::ZeroThenKeySlotIndexer};
+	use crate::util::hamt::data::fixture::ZeroThenKeySlotIndexer;
 	use crate::util::hamt::reader::Reader;
 	use crate::util::hamt::Root;
 	use crate::util::hamt::slot_indexer::SlotIndexer;
@@ -201,10 +201,6 @@ impl<'a> Writer<'a> {
 		Ok(self.root)
 	}
 	pub fn new(root: Root, diary_writer: &'a mut diary::Writer) -> Self { Writer { root, diary_writer } }
-}
-
-pub(crate) trait WriteContext {
-	fn slot_indexer(&self, key: u32) -> Box<dyn SlotIndexer>;
 }
 
 fn require_empty_high_bit_in_position(root: Root) -> io::Result<Root> {

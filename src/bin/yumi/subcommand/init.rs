@@ -8,8 +8,7 @@ use rand::random;
 
 use crate::settings::{IngressSettings, Settings};
 
-
-pub fn cli() -> Command<'static> {
+pub fn cli() -> Command {
 	Command::new("init")
 		.about("Initialize a database in the current directory")
 }

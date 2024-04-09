@@ -8,7 +8,7 @@ use recurvedb::kvs;
 mod write;
 mod read;
 
-pub fn cli() -> Command<'static> {
+pub fn cli() -> Command {
 	Command::new("kv")
 		.about("Manage the database's key-value store")
 		.subcommand_required(true)

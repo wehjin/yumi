@@ -12,7 +12,7 @@ use crate::subcommand::{init, kv, recall, release};
 mod subcommand;
 mod settings;
 
-fn cli() -> Command<'static> {
+fn cli() -> Command {
 	Command::new("yumi")
 		.about("Manage a recurve-db database")
 		.subcommand_required(true)
