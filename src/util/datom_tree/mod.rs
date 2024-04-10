@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::collections::HashSet;
 use std::rc::Rc;
 
 use crate::util::datom_tree::keys::EavKey;
@@ -18,7 +20,7 @@ impl DatomTree {
 		DatomTree { trie, transactions_count: 0 }
 	}
 	pub fn entity(&self, entity_id: EntityId) -> Entity {
-		Entity { id: entity_id, trie: self.trie.clone() }
+		Entity { entity_id, trie: self.trie.clone(), attributes_ids: RefCell::new(None) }
 	}
 }
 
@@ -35,43 +37,23 @@ impl DatomTree {
 }
 
 pub struct Entity {
-	id: EntityId,
+	entity_id: EntityId,
 	trie: Rc<Trie>,
+	attributes_ids: RefCell<Option<Rc<HashSet<AttributeId>>>>,
 }
 
 impl Entity {
-	pub fn attribute_ids(&self) -> Vec<AttributeId> {
-		let e_key = EKey::from(self.id);
-		let path = e_key.as_path();
-		let element = self.trie.search(path);
-		match element {
-			EphemeralNodeElement::Datom(datom) => {
-				match datom.c {
-					Change::Insert => vec![datom.a.clone()],
-					Change::Eject => vec![]
-				}
-			}
-			EphemeralNodeElement::Trie(_) => vec![]
+	pub fn attribute_ids(&self) -> Rc<HashSet<AttributeId>> {
+		if self.attributes_ids.borrow().is_none() {
+			let datoms = self.trie.search(self.entity_id);
+			let set = datoms.iter().map(Datom::attribute_id).cloned().collect::<HashSet<_>>();
+			let _ = self.attributes_ids.borrow_mut().insert(Rc::new(set));
 		}
+		self.attributes_ids.borrow().as_ref().expect("datom-set").clone()
 	}
 }
 
-struct EKey([u8; 7]);
-
-impl EKey {
-	pub fn as_path(&self) -> &[u8] {
-		&self.0
-	}
-}
-
-impl From<EntityId> for EKey {
-	fn from(entity_id: EntityId) -> Self {
-		EKey(entity_id.to_key_parts())
-	}
-}
-
-
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct EntityId(u32);
 
 impl EntityId {
@@ -88,7 +70,7 @@ impl EntityId {
 	}
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct AttributeId(u16);
 
 impl AttributeId {
@@ -102,7 +84,7 @@ impl AttributeId {
 	}
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Value(u64);
 
 impl Value {
@@ -125,15 +107,15 @@ impl Value {
 	}
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum Change { Insert, Eject }
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+pub enum Effect { Insert, Eject }
 
 #[derive(Debug, Copy, Clone)]
 pub struct Step {
 	pub e: EntityId,
 	pub a: AttributeId,
 	pub v: Value,
-	pub c: Change,
+	pub f: Effect,
 }
 
 impl Step {
@@ -143,12 +125,12 @@ impl Step {
 			a: self.a.clone(),
 			v: self.v.clone(),
 			_t: t,
-			c: self.c.clone(),
+			f: self.f.clone(),
 		}
 	}
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct TransactionId(usize);
 
 impl TransactionId {
@@ -157,13 +139,17 @@ impl TransactionId {
 	}
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Datom {
 	e: EntityId,
 	a: AttributeId,
 	v: Value,
 	_t: TransactionId,
-	c: Change,
+	f: Effect,
+}
+
+impl Datom {
+	pub fn attribute_id(&self) -> &AttributeId { &self.a }
 }
 
 #[derive(Debug, Clone)]
@@ -175,10 +161,24 @@ enum Trie {
 }
 
 impl Trie {
-	pub fn search(&self, path: &[u8]) -> EphemeralNodeElement {
-		let key = path[0];
-		let element = self.lookup(key);
-		element.clone()
+	pub fn search(&self, entity_id: EntityId) -> HashSet<Datom> {
+		let mut datoms = HashSet::new();
+		let mut current_trie = self;
+		for prefix in entity_id.to_key_parts() {
+			let element = current_trie.lookup(prefix);
+			match element {
+				EphemeralNodeElement::Datom(datom) => {
+					if datom.e == entity_id {
+						datoms.insert(datom.clone());
+					}
+					break;
+				}
+				EphemeralNodeElement::Trie(trie) => {
+					current_trie = trie;
+				}
+			}
+		}
+		datoms
 	}
 
 	fn lookup(&self, key: u8) -> &EphemeralNodeElement {
