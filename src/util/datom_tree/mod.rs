@@ -26,12 +26,13 @@ impl DatomTree {
 
 impl DatomTree {
 	pub fn transact(mut self, steps: &[Step]) -> Self {
-		let tc = self.transactions_count;
-		let t = TransactionId(tc);
-		let datoms = steps.iter().map(|step| step.to_datom(t)).collect::<Vec<_>>();
-		let datom = datoms.first().unwrap().clone();
-		self.trie = Rc::new(Trie::from_datom(datom));
-		self.transactions_count = tc + 1;
+		let transactions_count = self.transactions_count;
+		let tx_id = TransactionId(transactions_count);
+		let datoms = steps.iter().map(|step| step.to_datom(tx_id)).collect::<Vec<_>>();
+		for datom in datoms {
+			self.trie = Rc::new(self.trie.append(datom));
+		}
+		self.transactions_count = transactions_count + 1;
 		self
 	}
 }
@@ -165,39 +166,83 @@ impl Trie {
 		let mut datoms = HashSet::new();
 		let mut current_trie = self;
 		for prefix in entity_id.to_key_parts() {
-			let element = current_trie.lookup(prefix);
-			match element {
-				EphemeralNodeElement::Datom(datom) => {
-					if datom.e == entity_id {
-						datoms.insert(datom.clone());
+			match current_trie.lookup(prefix) {
+				None => break,
+				Some(element) => {
+					match element {
+						EphemeralNodeElement::Datom(datom) => {
+							if datom.e == entity_id && datom.f == Effect::Insert {
+								datoms.insert(datom.clone());
+							}
+							break;
+						}
+						EphemeralNodeElement::Trie(trie) => {
+							current_trie = trie;
+						}
 					}
-					break;
-				}
-				EphemeralNodeElement::Trie(trie) => {
-					current_trie = trie;
 				}
 			}
 		}
 		datoms
 	}
 
-	fn lookup(&self, key: u8) -> &EphemeralNodeElement {
+	fn lookup(&self, key: u8) -> Option<&EphemeralNodeElement> {
 		match self {
 			Trie::Ephemeral { node_map, node_elements } => {
-				let array_index = node_map::array_index(key, *node_map);
-				&node_elements[array_index]
+				match node_map::array_index(key, *node_map) {
+					None => None,
+					Some(index) => {
+						let element = &node_elements[index];
+						Some(&element)
+					}
+				}
 			}
 		}
 	}
+}
 
-	pub fn from_datom(datom: Datom) -> Self {
-		let eav_key = EavKey::from(&datom);
-		let key_prefix = eav_key.prefix0();
-		let node_map = node_map::map_entry(key_prefix);
-		let node_element = EphemeralNodeElement::Datom(datom);
-		Self::Ephemeral { node_map, node_elements: vec![node_element] }
+impl Trie {
+	pub fn append(&self, datom: Datom) -> Self {
+		match self {
+			Trie::Ephemeral { node_map, node_elements } => {
+				let eav_key = EavKey::from(&datom);
+				let current = self;
+				let prefixes = eav_key.prefixes();
+				for prefix in prefixes {
+					let element = current.lookup(*prefix);
+					match element {
+						None => {
+							let elements_indexes = node_map::expand(*node_map);
+							let mut new_node_elements = Vec::new();
+							let mut new_node_map = [false; 32];
+							for i in 0..32u8 {
+								if i == *prefix {
+									let new_element = EphemeralNodeElement::Datom(datom.clone());
+									new_node_elements.push(new_element);
+									new_node_map[i as usize] = true;
+								} else {
+									if let Some(elements_index) = elements_indexes[i as usize] {
+										let old_element = node_elements[elements_index].clone();
+										new_node_elements.push(old_element);
+										new_node_map[i as usize] = true;
+									}
+								}
+							}
+							let new_node_map = node_map::compress(new_node_map);
+							return Trie::Ephemeral {
+								node_map: new_node_map,
+								node_elements: new_node_elements,
+							};
+						}
+						Some(_) => {
+							unimplemented!("append to trie")
+						}
+					}
+				}
+				unimplemented!("append to trie")
+			}
+		}
 	}
-
 	pub fn empty() -> Self {
 		Self::Ephemeral { node_map: 0, node_elements: vec![] }
 	}
