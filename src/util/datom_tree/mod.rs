@@ -8,6 +8,7 @@ use crate::util::datom_tree::keys::EavKey;
 mod tests;
 pub(crate) mod keys;
 mod node_map;
+mod trie;
 
 pub struct DatomTree {
 	transactions_count: usize,
@@ -201,48 +202,64 @@ impl Trie {
 	}
 }
 
+struct Eavtf;
+
+impl Eavtf {
+	pub fn keys_eq(&self, datom1: &Datom, datom2: &Datom) -> bool {
+		datom1.e == datom2.e && datom1.a == datom2.a && datom1.v == datom2.v
+	}
+	pub fn get_prefixes(&self, datom: &Datom) -> Vec<u8> {
+		EavKey::from(datom).prefixes().to_vec()
+	}
+}
+
 impl Trie {
 	pub fn append(&self, datom: Datom) -> Self {
-		match self {
-			Trie::Ephemeral { node_map, node_elements } => {
-				let eav_key = EavKey::from(&datom);
-				let current = self;
-				let prefixes = eav_key.prefixes();
-				for prefix in prefixes {
-					let element = current.lookup(*prefix);
-					match element {
-						None => {
-							let elements_indexes = node_map::expand(*node_map);
-							let mut new_node_elements = Vec::new();
-							let mut new_node_map = [false; 32];
-							for i in 0..32u8 {
-								if i == *prefix {
-									let new_element = EphemeralNodeElement::Datom(datom.clone());
-									new_node_elements.push(new_element);
-									new_node_map[i as usize] = true;
-								} else {
-									if let Some(elements_index) = elements_indexes[i as usize] {
-										let old_element = node_elements[elements_index].clone();
-										new_node_elements.push(old_element);
-										new_node_map[i as usize] = true;
-									}
+		let trie_policy = Eavtf;
+		let prefixes = trie_policy.get_prefixes(&datom);
+		let mut current_prefixes = prefixes.as_slice();
+		let mut current_trie = self;
+		let mut back_trie: Trie;
+		let mut back_tasks: Vec<(u32, &Vec<EphemeralNodeElement>, u8)> = Vec::new();
+		loop {
+			match current_prefixes.first() {
+				None => unreachable!("out of prefixes"),
+				Some(prefix) =>
+					match current_trie {
+						Trie::Ephemeral { node_map, node_elements } =>
+							match current_trie.lookup(*prefix) {
+								None => {
+									back_trie = trie::inject_datom(datom, prefix, node_map, node_elements);
+									break;
 								}
-							}
-							let new_node_map = node_map::compress(new_node_map);
-							return Trie::Ephemeral {
-								node_map: new_node_map,
-								node_elements: new_node_elements,
-							};
-						}
-						Some(_) => {
-							unimplemented!("append to trie")
-						}
-					}
-				}
-				unimplemented!("append to trie")
+								Some(element) => match element {
+									EphemeralNodeElement::Datom(old_datom) => {
+										match trie_policy.keys_eq(&datom, old_datom) {
+											true => {
+												back_trie = trie::inject_datom(datom, prefix, node_map, node_elements);
+												break;
+											}
+											false => {
+												unimplemented!("move both datoms to a new node")
+											}
+										}
+									}
+									EphemeralNodeElement::Trie(trie) => {
+										back_tasks.push((*node_map, node_elements, *prefix));
+										current_trie = trie;
+										current_prefixes = &current_prefixes[1..];
+									}
+								},
+							},
+					},
 			}
 		}
+		while let Some((node_map, node_elements, prefix)) = back_tasks.pop() {
+			back_trie = trie::inject_trie(back_trie, prefix, node_map, node_elements);
+		}
+		back_trie
 	}
+
 	pub fn empty() -> Self {
 		Self::Ephemeral { node_map: 0, node_elements: vec![] }
 	}

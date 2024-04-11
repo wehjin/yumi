@@ -1,7 +1,29 @@
 use crate::util::datom_tree::{AttributeId, DatomTree, Effect, EntityId, Step, TransactionId, Value};
 
 #[test]
-fn add_one_datom_find_no_attributes_for_entity_with_similar_prefix() {
+fn eject_and_inject_same_datom_finds_attribute_for_entity() {
+	let datom_tree = DatomTree::new()
+		.transact(&[
+			Step { e: EntityId(3), a: AttributeId(20), v: Value(5), f: Effect::Eject },
+			Step { e: EntityId(3), a: AttributeId(20), v: Value(5), f: Effect::Insert },
+		]);
+	let entity = datom_tree.entity(EntityId(3));
+	assert_eq!(1, entity.attribute_ids().len())
+}
+
+#[test]
+fn inject_and_eject_same_datom_finds_no_attribute_for_entity() {
+	let datom_tree = DatomTree::new()
+		.transact(&[
+			Step { e: EntityId(1), a: AttributeId(20), v: Value(5), f: Effect::Insert },
+			Step { e: EntityId(1), a: AttributeId(20), v: Value(5), f: Effect::Eject },
+		]);
+	let entity = datom_tree.entity(EntityId(1));
+	assert_eq!(0, entity.attribute_ids().len())
+}
+
+#[test]
+fn add_one_datom_finds_no_attributes_for_entity_with_similar_prefix() {
 	let datom_tree = DatomTree::new().transact(&[
 		Step { e: EntityId(1), a: AttributeId(20), v: Value(5), f: Effect::Insert }
 	]);
@@ -10,17 +32,7 @@ fn add_one_datom_find_no_attributes_for_entity_with_similar_prefix() {
 }
 
 #[test]
-fn inject_and_eject_same_datom_find_no_attribute_for_entity() {
-	let datom_tree = DatomTree::new().transact(&[
-		Step { e: EntityId(1), a: AttributeId(20), v: Value(5), f: Effect::Insert },
-		Step { e: EntityId(1), a: AttributeId(20), v: Value(5), f: Effect::Eject }
-	]);
-	let entity = datom_tree.entity(EntityId(1));
-	assert_eq!(0, entity.attribute_ids().len())
-}
-
-#[test]
-fn add_one_datom_find_attribute_for_entity() {
+fn add_one_datom_finds_attribute_for_entity() {
 	let datom_tree = DatomTree::new().transact(&[
 		Step { e: EntityId(1), a: AttributeId(20), v: Value(5), f: Effect::Insert }
 	]);
