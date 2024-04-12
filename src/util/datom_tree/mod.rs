@@ -59,7 +59,7 @@ impl Entity {
 pub struct EntityId(u32);
 
 impl EntityId {
-	pub fn to_key_parts(&self) -> [u8; 7] {
+	pub fn to_key(&self) -> [u8; 7] {
 		return [
 			(self.0 >> 30) as u8 & 0b11111,
 			(self.0 >> 25) as u8 & 0b11111,
@@ -76,7 +76,7 @@ impl EntityId {
 pub struct AttributeId(u16);
 
 impl AttributeId {
-	pub fn to_key_parts(&self) -> [u8; 4] {
+	pub fn to_key(&self) -> [u8; 4] {
 		return [
 			(self.0 >> 15) as u8 & 0b11111,
 			(self.0 >> 10) as u8 & 0b11111,
@@ -90,7 +90,7 @@ impl AttributeId {
 pub struct Value(u64);
 
 impl Value {
-	pub fn to_key_parts(&self) -> [u8; 13] {
+	pub fn to_key(&self) -> [u8; 13] {
 		return [
 			(self.0 >> 60) as u8 & 0b11111,
 			(self.0 >> 55) as u8 & 0b11111,
@@ -166,8 +166,10 @@ impl Trie {
 	pub fn search(&self, entity_id: EntityId) -> HashSet<Datom> {
 		let mut datoms = HashSet::new();
 		let mut current_trie = self;
-		for prefix in entity_id.to_key_parts() {
-			match current_trie.lookup(prefix) {
+		let key = entity_id.to_key();
+		for key_index in 0..key.len() {
+			let array_index = key[key_index];
+			match current_trie.lookup(array_index) {
 				None => break,
 				Some(element) => {
 					match element {
@@ -208,7 +210,7 @@ impl Eavtf {
 	pub fn keys_eq(&self, datom1: &Datom, datom2: &Datom) -> bool {
 		datom1.e == datom2.e && datom1.a == datom2.a && datom1.v == datom2.v
 	}
-	pub fn get_prefixes(&self, datom: &Datom) -> Vec<u8> {
+	pub fn get_key(&self, datom: &Datom) -> Vec<u8> {
 		EavKey::from(datom).prefixes().to_vec()
 	}
 }
@@ -216,42 +218,46 @@ impl Eavtf {
 impl Trie {
 	pub fn append(&self, datom: Datom) -> Self {
 		let trie_policy = Eavtf;
-		let prefixes = trie_policy.get_prefixes(&datom);
-		let mut current_prefixes = prefixes.as_slice();
-		let mut current_trie = self;
 		let mut back_trie: Trie;
 		let mut back_tasks: Vec<(u32, &Vec<EphemeralNodeElement>, u8)> = Vec::new();
-		loop {
-			match current_prefixes.first() {
-				None => unreachable!("out of prefixes"),
-				Some(prefix) =>
-					match current_trie {
-						Trie::Ephemeral { node_map, node_elements } =>
-							match current_trie.lookup(*prefix) {
-								None => {
-									back_trie = trie::inject_datom(datom, prefix, node_map, node_elements);
-									break;
-								}
-								Some(element) => match element {
-									EphemeralNodeElement::Datom(old_datom) => {
-										match trie_policy.keys_eq(&datom, old_datom) {
-											true => {
-												back_trie = trie::inject_datom(datom, prefix, node_map, node_elements);
-												break;
-											}
-											false => {
-												unimplemented!("move both datoms to a new node")
+		let datom_key = trie_policy.get_key(&datom);
+		{
+			let mut current_key = datom_key.as_slice();
+			let mut current_trie = self;
+			loop {
+				match current_key.first() {
+					None => unreachable!("out of prefixes"),
+					Some(current_array_index) =>
+						match current_trie {
+							Trie::Ephemeral { node_map, node_elements } =>
+								match current_trie.lookup(*current_array_index) {
+									None => {
+										back_trie = trie::inject_datom(datom, current_array_index, node_map, node_elements);
+										break;
+									}
+									Some(element) => match element {
+										EphemeralNodeElement::Datom(old_datom) => {
+											match trie_policy.keys_eq(&datom, old_datom) {
+												true => {
+													back_trie = trie::inject_datom(datom, current_array_index, node_map, node_elements);
+													break;
+												}
+												false => {
+													let trie = trie::zip_datoms(&datom, &current_key[1..], old_datom, back_tasks.len() + 1, trie_policy);
+													back_trie = trie::inject_trie(trie, *current_array_index, *node_map, node_elements);
+													break;
+												}
 											}
 										}
-									}
-									EphemeralNodeElement::Trie(trie) => {
-										back_tasks.push((*node_map, node_elements, *prefix));
-										current_trie = trie;
-										current_prefixes = &current_prefixes[1..];
-									}
+										EphemeralNodeElement::Trie(trie) => {
+											back_tasks.push((*node_map, node_elements, *current_array_index));
+											current_trie = trie;
+											current_key = &current_key[1..];
+										}
+									},
 								},
-							},
-					},
+						},
+				}
 			}
 		}
 		while let Some((node_map, node_elements, prefix)) = back_tasks.pop() {

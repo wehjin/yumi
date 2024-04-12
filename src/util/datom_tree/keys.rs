@@ -29,9 +29,9 @@ pub struct EavKey([u8; 24]);
 
 impl From<&Datom> for EavKey {
 	fn from(datom: &Datom) -> Self {
-		let e = datom.e.to_key_parts();
-		let a = datom.a.to_key_parts();
-		let v = datom.v.to_key_parts();
+		let e = datom.e.to_key();
+		let a = datom.a.to_key();
+		let v = datom.v.to_key();
 		let parts = [
 			e[0], e[1], e[2], e[3], e[4], e[5], e[6],
 			a[0], a[1], a[2], a[3],
